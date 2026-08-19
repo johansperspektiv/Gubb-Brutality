@@ -90,7 +90,6 @@
 <script src="https://gstatic.com"></script>
 
 <script>
-    // Din unika konfiguration från Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
       authDomain: "://firebaseapp.com",
@@ -101,11 +100,9 @@
       appId: "1:604329304125:web:bbe520d0ad3af70e584a54"
     };
 
-    // Initiera Firebase på det traditionella sättet
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Dessa funktioner ligger nu helt öppna och kan garanterat anropas av HTML-knapparna direkt
     function switchTab(tab) {
         document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
         document.getElementById('leaderboard-tab').style.display = tab === 'leaderboard' ? 'block' : 'none';
@@ -142,7 +139,6 @@
         const netPoints = gross - penalty;
         const hitFactor = netPoints > 0 ? (netPoints / time) : 0;
 
-        // Spara poäng
         const stageRef = db.ref('matches/match1/' + stage);
         const newShooterRef = stageRef.push();
         
@@ -187,6 +183,7 @@
 
             if(shooters.length === 0) return;
             
+            // KORRIGERAT: Nu hämtas vinnarens HF korrekt från första platsen [0] i listan
             const maxHF = shooters[0].hf;
             const maxStagePoints = 100; 
 
