@@ -81,7 +81,7 @@
     </div>
 
     <!-- STATUSFÖNSTER (DEBUG) -->
-    <div id="debug-log">System-logg: Redo...</div>
+    <div id="debug-log">System-logg: Startar...</div>
 </div>
 
 <!-- Ladda Firebase via traditionella skript -->
@@ -91,8 +91,10 @@
 <script>
     function logg(text) {
         const d = document.getElementById('debug-log');
-        d.innerHTML += "<br>> " + text;
-        d.scrollTop = d.scrollHeight;
+        if (d) {
+            d.innerHTML += "<br>> " + text;
+            d.scrollTop = d.scrollHeight;
+        }
     }
 
     const firebaseConfig = {
@@ -105,16 +107,19 @@
       appId: "1:604329304125:web:bbe520d0ad3af70e584a54"
     };
 
+    // Global variabel för databasen
+    let db;
+
     try {
         firebase.initializeApp(firebaseConfig);
-        logg("Firebase initierat!");
+        db = firebase.database("https://firebasedatabase.app");
+        logg("Firebase är ansluten och redo!");
     } catch(e) {
-        logg("Fel vid Firebase-init: " + e.message);
+        logg("Fel vid databasanslutning: " + e.message);
     }
-    
-    const db = firebase.database();
 
     function switchTab(tab) {
+        logg("Växlar flik till: " + tab);
         document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
         document.getElementById('leaderboard-tab').style.display = tab === 'leaderboard' ? 'block' : 'none';
         
@@ -130,7 +135,7 @@
     }
 
     function saveScore() {
-        logg("Knappen tryckt! Hämtar värden...");
+        logg("Knappen tryckt! Läser värden...");
         const stage = document.getElementById('stage_select').value;
         const name = document.getElementById('shooter_name').value.trim();
         const gross = parseInt(document.getElementById('gross_pts').value) || 0;
@@ -138,7 +143,7 @@
         const time = parseFloat(document.getElementById('time_sec').value) || 0;
 
         if(!name || time <= 0) {
-            logg("Inmatningsfel: Namn saknas eller tid är 0");
+            logg("Fel: Namn saknas eller tid är noll.");
             alert("Vänligen fyll i skyttens namn och en giltig tid!");
             return;
         }
@@ -146,7 +151,7 @@
         const netPoints = gross - penalty;
         const hitFactor = netPoints > 0 ? (netPoints / time) : 0;
 
-        logg("Försöker spara till databasen för " + name + "...");
+        logg("Skickar till molnet (" + name + " - HF: " + hitFactor.toFixed(4) + ")...");
         
         try {
             const stageRef = db.ref('matches/match1/' + stage);
@@ -160,59 +165,54 @@
                 time: time,
                 hf: parseFloat(hitFactor.toFixed(4))
             }).then(() => {
-                logg("SUCCESS! Sparat i molnet för " + name);
+                logg("KLART! Sparat i Firebase.");
                 alert("Resultat sparat för " + name + "!");
                 document.getElementById('shooter_name').value = "";
                 document.getElementById('gross_pts').value = "";
                 document.getElementById('penalty_pts').value = "0";
                 document.getElementById('time_sec').value = "";
             }).catch((error) => {
-                logg("Firebase nekade lagring: " + error.message);
+                logg("Firebase vägrade spara: " + error.message);
             });
         } catch(err) {
-            logg("Kritisk krasch vid sparande: " + err.message);
+            logg("Gick inte att spara: " + err.message);
         }
     }
 
     function loadLeaderboard() {
         const stage = document.getElementById('leaderboard_stage_select').value;
         document.getElementById('current_stage_title').innerText = stage;
-        logg("Hämtar topplista för " + stage + "...");
+        logg("Laddar topplista för " + stage + "...");
         
-        const stageRef = db.ref('matches/match1/' + stage);
+        try {
+            const stageRef = db.ref('matches/match1/' + stage);
 
-        stageRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            const listDiv = document.getElementById('leaderboard-list');
-            listDiv.innerHTML = "";
+            stageRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                const listDiv = document.getElementById('leaderboard-list');
+                listDiv.innerHTML = "";
 
-            if(!data) {
-                listDiv.innerHTML = "<p style='text-align:center; padding: 20px; color:#64748B;'>Inga resultat registrerade på denna station än.</p>";
-                logg("Topplista tom för " + stage);
-                return;
-            }
+                if(!data) {
+                    listDiv.innerHTML = "<p style='text-align:center; padding: 20px; color:#64748B;'>Inga resultat på denna station än.</p>";
+                    logg("Topplistan är tom.");
+                    return;
+                }
 
-            let shooters = [];
-            for(let id in data) {
-                shooters.push(data[id]);
-            }
-            shooters.sort((a, b) => b.hf - a.hf);
+                let shooters = [];
+                for(let id in data) {
+                    shooters.push(data[id]);
+                }
+                shooters.sort((a, b) => b.hf - a.hf);
 
-            if(shooters.length === 0) return;
-            
-            // FELET ÄR HELT BORTTAGET: Tar bort alla avancerade %-uträkningar i detta skede så inget kan krascha
-            shooters.forEach((s, index) => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="rank-badge">#${index + 1}</div>
-                    <div class="shooter-info">
-                        <span class="hf-badge">HF: ${s.hf.toFixed(4)}</span>
-                        <strong>${s.name}</strong>
-                        <div class="meta-text">
-                            Poäng: ${s.net} (${s.gross} minus ${s.penalty}) | Tid: ${s.time}s
-                        </div>
-                    </div>
-                `;
-                listDiv.appendChild(card);
-            });
+                if(shooters.length === 0) return;
+                
+                // RÄTTAT: Nu läses vinnaren ut via shooters[0].hf istället för shooters.hf
+                const maxHF = shooters[0].hf;
+                const maxStagePoints = 100; 
+
+                shooters.forEach((s, index) => {
+                    const stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
+                    const percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
