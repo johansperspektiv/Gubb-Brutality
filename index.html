@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SRA Match Score - Lokal</title>
+    <title>SRA Live Match Score</title>
     <style>
         :root { --primary: #1E3D59; --secondary: #17B890; --bg: #F5F7FA; --dark: #111; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--dark); }
@@ -21,17 +21,16 @@
         .shooter-info { margin-left: 35px; }
         .hf-badge { float: right; background: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 14px; }
         .meta-text { font-size: 12px; color: #64748B; margin-top: 4px; }
-        .clear-btn { background: #EF4444; color: white; padding: 8px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>SRA Poängräknare</h1>
+    <h1>SRA Live-Poäng</h1>
     
     <div class="tab-buttons">
         <button id="btn-input" class="tab-btn active" onclick="switchTab('input')">Mata in poäng</button>
-        <button id="btn-leaderboard" class="tab-btn" onclick="switchTab('leaderboard')">Topplista</button>
+        <button id="btn-leaderboard" class="tab-btn" onclick="switchTab('leaderboard')">Topplista (Live)</button>
     </div>
 
     <!-- INMATNINGSFLIK -->
@@ -77,14 +76,29 @@
                 <option value="Station 4">Station 4</option>
             </select>
         </div>
-        <div id="leaderboard-list">Inga resultat sparade än.</div>
-        
-        <button class="clear-btn" onclick="clearMatchData()">Nollställ denna station</button>
+        <div id="leaderboard-list">Laddar live-data...</div>
     </div>
 </div>
 
+<!-- Ladda Firebase via traditionella skript -->
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+
 <script>
-    // Funktion för att byta flikar
+    const firebaseConfig = {
+      apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
+      authDomain: "://firebaseapp.com",
+      databaseURL: "https://firebasedatabase.app",
+      projectId: "sra-points",
+      storageBucket: "sra-points.firebasestorage.app",
+      messagingSenderId: "604329304125",
+      appId: "1:604329304125:web:bbe520d0ad3af70e584a54"
+    };
+
+    // Starta anslutningen
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database("https://firebasedatabase.app");
+
     function switchTab(tab) {
         document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
         document.getElementById('leaderboard-tab').style.display = tab === 'leaderboard' ? 'block' : 'none';
@@ -100,7 +114,6 @@
         }
     }
 
-    // Funktion för att spara poäng i lokala minnet
     function saveScore() {
         const stage = document.getElementById('stage_select').value;
         const name = document.getElementById('shooter_name').value.trim();
@@ -116,93 +129,79 @@
         const netPoints = gross - penalty;
         const hitFactor = netPoints > 0 ? (netPoints / time) : 0;
 
-        // Skapa skyttobjekt
-        const newShooter = {
+        // Skicka till Firebase i molnet
+        const stageRef = db.ref('matches/match1/' + stage);
+        const newShooterRef = stageRef.push();
+        
+        newShooterRef.set({
             name: name,
             gross: gross,
             penalty: penalty,
             net: netPoints,
             time: time,
             hf: parseFloat(hitFactor.toFixed(4))
-        };
-
-        // Hämta befintlig data från internminnet
-        let matchData = JSON.parse(localStorage.getItem('sra_match1')) || {};
-        if (!matchData[stage]) {
-            matchData[stage] = [];
-        }
-
-        // Lägg till den nya skytten
-        matchData[stage].push(newShooter);
-
-        // Spara tillbaka till minnet
-        localStorage.setItem('sra_match1', JSON.stringify(matchData));
-
-        alert("Resultat sparats för " + name + "!");
-        
-        // Rensa fälten
-        document.getElementById('shooter_name').value = "";
-        document.getElementById('gross_pts').value = "";
-        document.getElementById('penalty_pts').value = "0";
-        document.getElementById('time_sec').value = "";
-    }
-
-    // Funktion för att ladda och rita ut topplistan
-    function loadLeaderboard() {
-        const stage = document.getElementById('leaderboard_stage_select').value;
-        document.getElementById('current_stage_title').innerText = stage;
-        
-        const listDiv = document.getElementById('leaderboard-list');
-        listDiv.innerHTML = "";
-
-        // Hämta data från minnet
-        const matchData = JSON.parse(localStorage.getItem('sra_match1')) || {};
-        const shooters = matchData[stage] || [];
-
-        if(shooters.length === 0) {
-            listDiv.innerHTML = "<p style='text-align:center; padding: 20px; color:#64748B;'>Inga resultat registrerade på denna station än.</p>";
-            return;
-        }
-
-        // Sortera skyttar baserat på Hit Factor (Högst först)
-        shooters.sort((a, b) => b.hf - a.hf);
-
-        // Hitta vinnarens HF (första personen i listan eftersom den är sorterad)
-        const maxHF = shooters[0].hf;
-        const maxStagePoints = 100; 
-
-        shooters.forEach((s, index) => {
-            const stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
-            const percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
-
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div class="rank-badge">#${index + 1}</div>
-                <div class="shooter-info">
-                    <span class="hf-badge">HF: ${s.hf.toFixed(4)}</span>
-                    <strong>${s.name}</strong>
-                    <div class="meta-text">
-                        Poäng: ${s.net} (${s.gross} minus ${s.penalty}) | Tid: ${s.time}s
-                    </div>
-                    <div class="meta-text" style="color:var(--secondary); font-weight:bold;">
-                        Stationspoäng: ${stagePoints} (${percentage}%)
-                    </div>
-                </div>
-            `;
-            listDiv.appendChild(card);
+        }).then(() => {
+            alert("Resultat sparat online för " + name + "!");
+            document.getElementById('shooter_name').value = "";
+            document.getElementById('gross_pts').value = "";
+            document.getElementById('penalty_pts').value = "0";
+            document.getElementById('time_sec').value = "";
+        }).catch((error) => {
+            alert("Kunde inte spara online: " + error.message);
         });
     }
 
-    // Funktion för och nollställa data för en station
-    function clearMatchData() {
-        if(confirm("Är du säker på att du vill radera alla resultat för denna station?")) {
-            const stage = document.getElementById('leaderboard_stage_select').value;
-            let matchData = JSON.parse(localStorage.getItem('sra_match1')) || {};
-            matchData[stage] = [];
-            localStorage.setItem('sra_match1', JSON.stringify(matchData));
-            loadLeaderboard();
-        }
+    function loadLeaderboard() {
+        const stage = document.getElementById('leaderboard_stage_select').value;
+        document.getElementById('current_stage_title').innerText = stage;
+        const stageRef = db.ref('matches/match1/' + stage);
+
+        // Lyssna på live-uppdateringar från molnet
+        stageRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            const listDiv = document.getElementById('leaderboard-list');
+            listDiv.innerHTML = "";
+
+            if(!data) {
+                listDiv.innerHTML = "<p style='text-align:center; padding: 20px; color:#64748B;'>Inga resultat online på denna station än.</p>";
+                return;
+            }
+
+            let shooters = [];
+            for(let id in data) {
+                shooters.push(data[id]);
+            }
+            
+            // Sortera efter Hit Factor
+            shooters.sort((a, b) => b.hf - a.hf);
+            if(shooters.length === 0) return;
+            
+            // Plocka ut vinnaren på plats 0 i listan
+            const maxHF = shooters[0].hf;
+            const maxStagePoints = 100; 
+
+            shooters.forEach((s, index) => {
+                const stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
+                const percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="rank-badge">#${index + 1}</div>
+                    <div class="shooter-info">
+                        <span class="hf-badge">HF: ${s.hf.toFixed(4)}</span>
+                        <strong>${s.name}</strong>
+                        <div class="meta-text">
+                            Poäng: ${s.net} (${s.gross} minus ${s.penalty}) | Tid: ${s.time}s
+                        </div>
+                        <div class="meta-text" style="color:var(--secondary); font-weight:bold;">
+                            Stationspoäng: ${stagePoints} (${percentage}%)
+                        </div>
+                    </div>
+                `;
+                listDiv.appendChild(card);
+            });
+        });
     }
 </script>
 </body>
