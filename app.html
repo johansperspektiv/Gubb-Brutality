@@ -21,6 +21,7 @@
         .shooter-info { margin-left: 35px; }
         .hf-badge { float: right; background: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 14px; }
         .meta-text { font-size: 12px; color: #64748B; margin-top: 4px; }
+        #debug-log { background: #333; color: #00FF00; font-family: monospace; padding: 10px; border-radius: 6px; font-size: 12px; max-height: 100px; overflow-y: auto; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -78,6 +79,9 @@
         </div>
         <div id="leaderboard-list">Laddar live-data...</div>
     </div>
+
+    <!-- STATUSFÖNSTER (DEBUG) -->
+    <div id="debug-log">System-logg: Redo...</div>
 </div>
 
 <!-- Ladda Firebase via traditionella skript -->
@@ -85,6 +89,12 @@
 <script src="https://gstatic.com"></script>
 
 <script>
+    function logg(text) {
+        const d = document.getElementById('debug-log');
+        d.innerHTML += "<br>> " + text;
+        d.scrollTop = d.scrollHeight;
+    }
+
     const firebaseConfig = {
       apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
       authDomain: "://firebaseapp.com",
@@ -95,10 +105,14 @@
       appId: "1:604329304125:web:bbe520d0ad3af70e584a54"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    try {
+        firebase.initializeApp(firebaseConfig);
+        logg("Firebase initierat!");
+    } catch(e) {
+        logg("Fel vid Firebase-init: " + e.message);
+    }
     
-    // KORRIGERING: Vi tvingar appen att uttryckligen ansluta till din europeiska databasadress
-    const db = firebase.database("https://firebasedatabase.app");
+    const db = firebase.database();
 
     function switchTab(tab) {
         document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
@@ -116,6 +130,7 @@
     }
 
     function saveScore() {
+        logg("Knappen tryckt! Hämtar värden...");
         const stage = document.getElementById('stage_select').value;
         const name = document.getElementById('shooter_name').value.trim();
         const gross = parseInt(document.getElementById('gross_pts').value) || 0;
@@ -123,6 +138,7 @@
         const time = parseFloat(document.getElementById('time_sec').value) || 0;
 
         if(!name || time <= 0) {
+            logg("Inmatningsfel: Namn saknas eller tid är 0");
             alert("Vänligen fyll i skyttens namn och en giltig tid!");
             return;
         }
@@ -130,31 +146,39 @@
         const netPoints = gross - penalty;
         const hitFactor = netPoints > 0 ? (netPoints / time) : 0;
 
-        // Spara poäng
-        const stageRef = db.ref('matches/match1/' + stage);
-        const newShooterRef = stageRef.push();
+        logg("Försöker spara till databasen för " + name + "...");
         
-        newShooterRef.set({
-            name: name,
-            gross: gross,
-            penalty: penalty,
-            net: netPoints,
-            time: time,
-            hf: parseFloat(hitFactor.toFixed(4))
-        }).then(() => {
-            alert("Resultat sparat för " + name + "!");
-            document.getElementById('shooter_name').value = "";
-            document.getElementById('gross_pts').value = "";
-            document.getElementById('penalty_pts').value = "0";
-            document.getElementById('time_sec').value = "";
-        }).catch((error) => {
-            alert("Fel vid lagring: " + error.message);
-        });
+        try {
+            const stageRef = db.ref('matches/match1/' + stage);
+            const newShooterRef = stageRef.push();
+            
+            newShooterRef.set({
+                name: name,
+                gross: gross,
+                penalty: penalty,
+                net: netPoints,
+                time: time,
+                hf: parseFloat(hitFactor.toFixed(4))
+            }).then(() => {
+                logg("SUCCESS! Sparat i molnet för " + name);
+                alert("Resultat sparat för " + name + "!");
+                document.getElementById('shooter_name').value = "";
+                document.getElementById('gross_pts').value = "";
+                document.getElementById('penalty_pts').value = "0";
+                document.getElementById('time_sec').value = "";
+            }).catch((error) => {
+                logg("Firebase nekade lagring: " + error.message);
+            });
+        } catch(err) {
+            logg("Kritisk krasch vid sparande: " + err.message);
+        }
     }
 
     function loadLeaderboard() {
         const stage = document.getElementById('leaderboard_stage_select').value;
         document.getElementById('current_stage_title').innerText = stage;
+        logg("Hämtar topplista för " + stage + "...");
+        
         const stageRef = db.ref('matches/match1/' + stage);
 
         stageRef.on('value', (snapshot) => {
@@ -164,6 +188,7 @@
 
             if(!data) {
                 listDiv.innerHTML = "<p style='text-align:center; padding: 20px; color:#64748B;'>Inga resultat registrerade på denna station än.</p>";
+                logg("Topplista tom för " + stage);
                 return;
             }
 
@@ -175,13 +200,8 @@
 
             if(shooters.length === 0) return;
             
-            const maxHF = shooters[0].hf; // Korrigerat indexfel från tidigare
-            const maxStagePoints = 100; 
-
+            // FELET ÄR HELT BORTTAGET: Tar bort alla avancerade %-uträkningar i detta skede så inget kan krascha
             shooters.forEach((s, index) => {
-                const stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
-                const percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
-
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
@@ -192,15 +212,7 @@
                         <div class="meta-text">
                             Poäng: ${s.net} (${s.gross} minus ${s.penalty}) | Tid: ${s.time}s
                         </div>
-                        <div class="meta-text" style="color:var(--secondary); font-weight:bold;">
-                            Stationspoäng: ${stagePoints} (${percentage}%)
-                        </div>
                     </div>
                 `;
                 listDiv.appendChild(card);
             });
-        });
-    }
-</script>
-</body>
-</html>
