@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRA Live Match Score</title>
+    <style>
+        :root { --primary: #1E3D59; --secondary: #17B890; --bg: #F5F7FA; --dark: #111; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--dark); }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1, h2 { text-align: center; color: var(--primary); margin-top: 0; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: #E4E7EB; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 14px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #CCC; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button.action-btn { width: 100%; padding: 14px; background: var(--secondary); color: white; border: none; font-weight: bold; font-size: 16px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+        .card { background: #F8FAFC; border: 1px solid #E2E8F0; padding: 12px; border-radius: 8px; margin-bottom: 10px; position: relative; }
+        .rank-badge { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 20px; font-weight: bold; color: var(--primary); }
+        .shooter-info { margin-left: 35px; }
+        .hf-badge { float: right; background: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 14px; }
+        .meta-text { font-size: 12px; color: #64748B; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>SRA Live-Poäng</h1>
+    
+    <div class="tab-buttons">
+        <button id="btn-input" class="tab-btn active" onclick="switchTab('input')">Mata in poäng</button>
+        <button id="btn-leaderboard" class="tab-btn" onclick="switchTab('leaderboard')">Topplista (Live)</button>
+    </div>
+
+    <!-- INMATNINGSFLIK -->
+    <div id="input-tab">
+        <h2>Registrera resultat</h2>
+        <div class="form-group">
+            <label>Funktionärs-PIN (Lösenord)</label>
+            <input type="password" id="pin" placeholder="Ange PIN för att spara" value="1234">
+        </div>
+        <hr>
+        <div class="form-group">
+            <label>Station (Stage)</label>
+            <select id="stage_select">
+                <option value="Station 1">Station 1</option>
+                <option value="Station 2">Station 2</option>
+                <option value="Station 3">Station 3</option>
+                <option value="Station 4">Station 4</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Skyttens Namn</label>
+            <input type="text" id="shooter_name" placeholder="Förnamn Efternamn">
+        </div>
+        <div class="form-group">
+            <label>Brutto Träffpoäng (+)</label>
+            <input type="number" id="gross_pts" placeholder="T.ex. 85">
+        </div>
+        <div class="form-group">
+            <label>Straffpoäng (-) Miss/Procedur</label>
+            <input type="number" id="penalty_pts" value="0">
+        </div>
+        <div class="form-group">
+            <label>Tid i sekunder</label>
+            <input type="number" step="0.01" id="time_sec" placeholder="T.ex. 14.52">
+        </div>
+        <button class="action-btn" onclick="saveScore()">Spara & Beräkna</button>
+    </div>
+
+    <!-- TOPPLISTEFLIK -->
+    <div id="leaderboard-tab" style="display:none;">
+        <h2>Resultat för <span id="current_stage_title">Station 1</span></h2>
+        <div class="form-group">
+            <label>Välj Station att visa</label>
+            <select id="leaderboard_stage_select" onchange="loadLeaderboard()">
+                <option value="Station 1">Station 1</option>
+                <option value="Station 2">Station 2</option>
+                <option value="Station 3">Station 3</option>
+                <option value="Station 4">Station 4</option>
+            </select>
+        </div>
+        <div id="leaderboard-list">Laddar live-data...</div>
+    </div>
+</div>
+
+<!-- Ladda Firebase via traditionella skript som aldrig blockeras -->
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+
+<script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
+      authDomain: "://firebaseapp.com",
+      databaseURL: "https://firebasedatabase.app",
+      projectId: "sra-points",
+      storageBucket: "sra-points.firebasestorage.app",
+      messagingSenderId: "604329304125",
+      appId: "1:604329304125:web:bbe520d0ad3af70e584a54"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function switchTab(tab) {
+        document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
+        document.getElementById('leaderboard-tab').style.display = tab === 'leaderboard' ? 'block' : 'none';
+        
+        document.getElementById('btn-input').classList.remove('active');
+        document.getElementById('btn-leaderboard').classList.remove('active');
+        
+        if (tab === 'input') {
+            document.getElementById('btn-input').classList.add('active');
+        } else {
+            document.getElementById('btn-leaderboard').classList.add('active');
+            loadLeaderboard();
+        }
+    }
+
+    function saveScore() {
+        const pin = document.getElementById('pin').value;
+        if (pin !== "1234") {
+            alert("Fel funktionärs-PIN! Du har inte behörighet att spara.");
+            return;
+        }
+
+        const stage = document.getElementById('stage_select').value;
+        const name = document.getElementById('shooter_name').value.trim();
+        const gross = parseInt(document.getElementById('gross_pts').value) || 0;
+        const penalty = parseInt(document.getElementById('penalty_pts').value) || 0;
+        const time = parseFloat(document.getElementById('time_sec').value) || 0;
+
+        if(!name || time <= 0) {
+            alert("Vänligen fyll i skyttens namn och en giltig tid!");
+            return;
+        }
+
+        const netPoints = gross - penalty;
+        const hitFactor = netPoints > 0 ? (netPoints / time) : 0;
+
+        const stageRef = db.ref('matches/match1/' + stage);
+        const newShooterRef = stageRef.push();
+        
+        newShooterRef.set({
+            name: name,
+            gross: gross,
+            penalty: penalty,
+            net: netPoints,
+            time: time,
+            hf: parseFloat(hitFactor.toFixed(4))
+        }).then(() => {
+            alert("Resultat sparat för " + name + "!");
+            document.getElementById('shooter_name').value = "";
+            document.getElementById('gross_pts').value = "";
+            document.getElementById('penalty_pts').value = "0";
+            document.getElementById('time_sec').value = "";
+        }).catch((error) => {
+            alert("Fel vid lagring: " + error.message);
+        });
+    }
+
+    function loadLeaderboard() {
+        const stage = document.getElementById('leaderboard_stage_select').value;
+        document.getElementById('current_stage_title').innerText = stage;
+        const stageRef = db.ref('matches/match1/' + stage);
+
+        stageRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            const listDiv = document.getElementById('leaderboard-list');
+            listDiv.innerHTML = "";
+
+            if(!data) {
+                listDiv.innerHTML = "<p style='text-align:center; padding: 20px; color:#64748B;'>Inga resultat registrerade på denna station än.</p>";
+                return;
+            }
+
+            let shooters = [];
+            for(let id in data) {
+                shooters.push(data[id]);
+            }
+            shooters.sort((a, b) => b.hf - a.hf);
+
+            if(shooters.length === 0) return;
+            
+            // KORRIGERAT: Nu hämtas vinnarens HF korrekt från första platsen [0] i listan
+            const maxHF = shooters[0].hf;
+            const maxStagePoints = 100; 
+
+            shooters.forEach((s, index) => {
+                const stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
+                const percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="rank-badge">#${index + 1}</div>
+                    <div class="shooter-info">
+                        <span class="hf-badge">HF: ${s.hf.toFixed(4)}</span>
+                        <strong>${s.name}</strong>
+                        <div class="meta-text">
+                            Poäng: ${s.net} (${s.gross} minus ${s.penalty}) | Tid: ${s.time}s
+                        </div>
+                        <div class="meta-text" style="color:var(--secondary); font-weight:bold;">
+                            Stationspoäng: ${stagePoints} (${percentage}%)
+                        </div>
+                    </div>
+                `;
+                listDiv.appendChild(card);
+            });
+        });
+    }
+</script>
+</body>
+</html>
