@@ -10,7 +10,7 @@ html<!DOCTYPE html>
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h1, h2 { text-align: center; color: var(--primary); margin-top: 0; }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 12px; border: none; background: #E4E7EB; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: #E4E7EB; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; }
         .tab-btn.active { background: var(--primary); color: white; }
         .form-group { margin-bottom: 12px; }
         label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 14px; }
@@ -29,8 +29,8 @@ html<!DOCTYPE html>
     <h1>SRA Live-Poäng</h1>
     
     <div class="tab-buttons">
-        <button class="tab-btn active" onclick="switchTab('input')">Mata in poäng</button>
-        <button class="tab-btn" onclick="switchTab('leaderboard')">Topplista (Live)</button>
+        <button id="btn-input" class="tab-btn active" onclick="switchTab('input')">Mata in poäng</button>
+        <button id="btn-leaderboard" class="tab-btn" onclick="switchTab('leaderboard')">Topplista (Live)</button>
     </div>
 
     <!-- INMATNINGSFLIK -->
@@ -43,7 +43,7 @@ html<!DOCTYPE html>
         <hr>
         <div class="form-group">
             <label>Station (Stage)</label>
-            <select id="stage_select" onchange="loadLeaderboard()">
+            <select id="stage_select">
                 <option value="Station 1">Station 1</option>
                 <option value="Station 2">Station 2</option>
                 <option value="Station 3">Station 3</option>
@@ -72,6 +72,15 @@ html<!DOCTYPE html>
     <!-- TOPPLISTEFLIK -->
     <div id="leaderboard-tab" style="display:none;">
         <h2>Resultat för <span id="current_stage_title">Station 1</span></h2>
+        <div class="form-group">
+            <label>Välj Station att visa</label>
+            <select id="leaderboard_stage_select" onchange="loadLeaderboard()">
+                <option value="Station 1">Station 1</option>
+                <option value="Station 2">Station 2</option>
+                <option value="Station 3">Station 3</option>
+                <option value="Station 4">Station 4</option>
+            </select>
+        </div>
         <div id="leaderboard-list">Laddar live-data...</div>
     </div>
 </div>
@@ -81,35 +90,37 @@ html<!DOCTYPE html>
     import { initializeApp } from "https://gstatic.com";
     import { getDatabase, ref, set, push, onValue } from "https://gstatic.com";
 
-    // Din unika konfiguration från Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
-      authDomain: "sra-points.firebaseapp.com",
-      databaseURL: "https://sra-points-default-rtdb.europe-west1.firebasedatabase.app",
+      authDomain: "://firebaseapp.com",
+      databaseURL: "https://firebasedatabase.app",
       projectId: "sra-points",
       storageBucket: "sra-points.firebasestorage.app",
       messagingSenderId: "604329304125",
       appId: "1:604329304125:web:bbe520d0ad3af70e584a54"
     };
 
-    // Initiera Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Globala funktioner för att nås från HTML-knappar
     window.switchTab = function(tab) {
         document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
         document.getElementById('leaderboard-tab').style.display = tab === 'leaderboard' ? 'block' : 'none';
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        if (event && event.target) {
-            event.target.classList.add('active');
+        
+        document.getElementById('btn-input').classList.remove('active');
+        document.getElementById('btn-leaderboard').classList.remove('active');
+        
+        if (tab === 'input') {
+            document.getElementById('btn-input').classList.add('active');
+        } else {
+            document.getElementById('btn-leaderboard').classList.add('active');
+            loadLeaderboard();
         }
-        if(tab === 'leaderboard') loadLeaderboard();
     }
 
     window.saveScore = function() {
         const pin = document.getElementById('pin').value;
-        if (pin !== "1234") { // Funktionärs-PIN för att spara
+        if (pin !== "1234") {
             alert("Fel funktionärs-PIN! Du har inte behörighet att spara.");
             return;
         }
@@ -128,7 +139,6 @@ html<!DOCTYPE html>
         const netPoints = gross - penalty;
         const hitFactor = netPoints > 0 ? (netPoints / time) : 0;
 
-        // Spara till Firebase under den specifika stationen
         const stageRef = ref(db, 'matches/match1/' + stage);
         const newShooterRef = push(stageRef);
         
@@ -140,18 +150,18 @@ html<!DOCTYPE html>
             time: time,
             hf: parseFloat(hitFactor.toFixed(4))
         }).then(() => {
-            alert("Resultat sparat för " + name);
+            alert("Resultat sparat för " + name + "!");
             document.getElementById('shooter_name').value = "";
             document.getElementById('gross_pts').value = "";
             document.getElementById('penalty_pts').value = "0";
             document.getElementById('time_sec').value = "";
         }).catch((error) => {
-            alert("Ett fel uppstod: " + error.message);
+            alert("Fel vid lagring i databasen: " + error.message);
         });
     }
 
     window.loadLeaderboard = function() {
-        const stage = document.getElementById('stage_select').value;
+        const stage = document.getElementById('leaderboard_stage_select').value;
         document.getElementById('current_stage_title').innerText = stage;
         const stageRef = ref(db, 'matches/match1/' + stage);
 
@@ -161,18 +171,16 @@ html<!DOCTYPE html>
             listDiv.innerHTML = "";
 
             if(!data) {
-                listDiv.innerHTML = "<p style='text-align:center;'>Inga resultat registrerade på denna station än.</p>";
+                listDiv.innerHTML = "<p style='text-align:center; padding: 20px; color:#64748B;'>Inga resultat registrerade på denna station än.</p>";
                 return;
             }
 
-            // Gör om objektet till en sorterad array baserat på Hit Factor
             let shooters = [];
             for(let id in data) {
                 shooters.push(data[id]);
             }
             shooters.sort((a, b) => b.hf - a.hf);
 
-            // Hitta vinnarens HF för stationspoängberäkning (Max 100 poäng per station)
             const maxHF = shooters[0].hf;
             const maxStagePoints = 100; 
 
