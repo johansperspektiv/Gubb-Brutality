@@ -37,11 +37,6 @@
     <div id="input-tab">
         <h2>Registrera resultat</h2>
         <div class="form-group">
-            <label>Funktionärs-PIN (Lösenord)</label>
-            <input type="password" id="pin" placeholder="Ange PIN för att spara" value="1234">
-        </div>
-        <hr>
-        <div class="form-group">
             <label>Station (Stage)</label>
             <select id="stage_select">
                 <option value="Station 1">Station 1</option>
@@ -85,7 +80,7 @@
     </div>
 </div>
 
-<!-- Ladda Firebase via traditionella skript som aldrig blockeras -->
+<!-- Ladda Firebase via traditionella skript -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 
@@ -119,12 +114,6 @@
     }
 
     function saveScore() {
-        const pin = document.getElementById('pin').value;
-        if (pin !== "1234") {
-            alert("Fel funktionärs-PIN! Du har inte behörighet att spara.");
-            return;
-        }
-
         const stage = document.getElementById('stage_select').value;
         const name = document.getElementById('shooter_name').value.trim();
         const gross = parseInt(document.getElementById('gross_pts').value) || 0;
@@ -183,7 +172,7 @@
 
             if(shooters.length === 0) return;
             
-            // KORRIGERAT: Nu hämtas vinnarens HF korrekt från första platsen [0] i listan
+            // FELET ÅTGÄRDAT HÄR: [0] tillagt för att hämta första skyttens hf korrekt
             const maxHF = shooters[0].hf;
             const maxStagePoints = 100; 
 
