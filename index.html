@@ -3,24 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Anslutningstest</title>
+    <title>Firebase Anslutningstest - Lila Knapp</title>
     <style>
         body { font-family: sans-serif; background: #F5F7FA; padding: 20px; color: #111; }
         .box { max-width: 500px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
-        button { padding: 15px 30px; background: #17B890; color: white; border: none; font-weight: bold; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; }
+        /* ÄNDRING: Knappen är nu lila för att verifiera uppdateringen */
+        button { padding: 15px 30px; background: #6B46C1; color: white; border: none; font-weight: bold; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; box-shadow: 0 4px 6px rgba(107, 70, 193, 0.2); }
+        button:hover { background: #553C9A; }
         #status-display { margin-top: 25px; padding: 15px; background: #E4E7EB; border-radius: 6px; font-family: monospace; font-size: 14px; text-align: left; min-height: 50px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
 
 <div class="box">
-    <h2>SRA Databastest</h2>
-    <p>Tryck på knappen nedan för att testa om din telefon kan prata med Firebase-molnet.</p>
+    <h2>SRA Databastest (Lila version)</h2>
+    <p>Om knappen nedan är lila vet vi att den nya koden har laddats upp ordentligt på internet!</p>
     <button onclick="runTest()">Kör anslutningstest</button>
     <div id="status-display">Status: Väntar på test...</div>
 </div>
 
-<!-- Ladda Firebase -->
+<!-- Ladda Firebase via traditionella skript -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 
@@ -35,25 +37,28 @@
       appId: "1:604329304125:web:bbe520d0ad3af70e584a54"
     };
 
+    // Initiera grundappen
     firebase.initializeApp(firebaseConfig);
+    
+    // Tvingar appen till din server i Belgien
     const db = firebase.database("https://firebasedatabase.app");
 
     function runTest() {
         const display = document.getElementById('status-display');
-        display.innerHTML = "Försöker skicka data till Belgien...";
-        display.style.background = "#FFF3CD"; // Gul färg vid laddning
+        display.innerHTML = "Ansluter direkt till servern i Belgien...";
+        display.style.background = "#FFF3CD"; // Gul vid laddning
 
         db.ref('anslutningstest').set({
             tidpunkt: new Date().toISOString(),
-            status: "Appen fungerar!"
+            status: "Lila Europa-anslutning fungerar!"
         }).then(() => {
-            display.innerHTML = "ANSLUTNING LYCKADES! \n\nDin telefon har fri lejd till databasen. Molnet är öppet!";
-            display.style.background = "#D1E7DD"; // Grön färg vid succé
-            alert("Det fungerar! Databasen svarar.");
+            display.innerHTML = "ANSLUTNING LYCKADES! \n\nDin webbläsare har hittat servern i Belgien. Molnet är vidöppet!";
+            display.style.background = "#D1E7DD"; // Grön vid succé
+            alert("Det fungerar! Servern svarade.");
         }).catch((error) => {
-            display.innerHTML = "FIREBASE NEKADE ANSLUTNINGEN! \n\nFelmeddelande: " + error.message;
-            display.style.background = "#F8D7DA"; // Röd färg vid fel
-            alert("Stopp i molnet: " + error.message);
+            display.innerHTML = "FEL: " + error.message;
+            display.style.background = "#F8D7DA"; // Röd vid fel
+            alert("Stopp: " + error.message);
         });
     }
 </script>
