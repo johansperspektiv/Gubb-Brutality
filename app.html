@@ -96,7 +96,9 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    
+    // KORRIGERING: Vi tvingar appen att uttryckligen ansluta till din europeiska databasadress
+    const db = firebase.database("https://firebasedatabase.app");
 
     function switchTab(tab) {
         document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
@@ -128,6 +130,7 @@
         const netPoints = gross - penalty;
         const hitFactor = netPoints > 0 ? (netPoints / time) : 0;
 
+        // Spara poäng
         const stageRef = db.ref('matches/match1/' + stage);
         const newShooterRef = stageRef.push();
         
@@ -172,8 +175,7 @@
 
             if(shooters.length === 0) return;
             
-            // FELET ÅTGÄRDAT HÄR: [0] tillagt för att hämta första skyttens hf korrekt
-            const maxHF = shooters[0].hf;
+            const maxHF = shooters[0].hf; // Korrigerat indexfel från tidigare
             const maxStagePoints = 100; 
 
             shooters.forEach((s, index) => {
