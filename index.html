@@ -103,7 +103,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Hantera flikbyten ordentligt utan krockar
     function switchTab(tab) {
         document.getElementById('input-tab').style.display = tab === 'input' ? 'block' : 'none';
         document.getElementById('leaderboard-tab').style.display = tab === 'leaderboard' ? 'block' : 'none';
@@ -184,6 +183,7 @@
 
             if(shooters.length === 0) return;
             
+            // HÄR VAR BUGGEN: Ändrat från shooters.hf till shooters[0].hf
             const maxHF = shooters[0].hf;
             const maxStagePoints = 100; 
 
@@ -211,7 +211,6 @@
         });
     }
 
-    // Koppla ihop HTML-knapparna med funktionerna i JavaScript-modulen
     document.getElementById('btn-input').addEventListener('click', () => switchTab('input'));
     document.getElementById('btn-leaderboard').addEventListener('click', () => switchTab('leaderboard'));
     document.getElementById('btn-save-action').addEventListener('click', saveScore);
