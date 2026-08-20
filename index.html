@@ -178,6 +178,9 @@
     <div id="status" class="status-wait">Ansluter till databasen…</div>
 
     <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-neutral" id="btn-open-qr" type="button">🔗 QR/länk</button>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
       <button class="btn-neutral" id="btn-open-howto" type="button">❓ Så använder du appen</button>
     </div>
     <div class="modal-actions" style="margin-top:8px;">
@@ -332,6 +335,20 @@
     <div class="modal-actions">
       <button class="btn-confirm" id="btn-template-preview-add" type="button">➕ Lägg till som station</button>
       <button class="btn-cancel" id="btn-template-preview-close" type="button">Stäng</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR / LÄNK MODAL -->
+<div class="modal-backdrop" id="qrModalBackdrop">
+  <div class="modal-box" style="text-align:center;">
+    <h3>Anslut till appen</h3>
+    <img id="qr-code-img" src="" alt="QR-kod" style="width:250px;height:250px;margin:0 auto;display:block;">
+    <p style="word-break:break-all;margin-top:15px;font-size:14px;">
+      <a id="qr-link-text" href="#" target="_blank" rel="noopener"></a>
+    </p>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btn-close-qr" type="button">Stäng</button>
     </div>
   </div>
 </div>
@@ -694,12 +711,7 @@
 
   function normalizeStationsArray(raw) {
     if (!raw || !raw.length) {
-      return [
-        makeStationObj("Station 1", "s1"),
-        makeStationObj("Station 2", "s2"),
-        makeStationObj("Station 3", "s3"),
-        makeStationObj("Station 4", "s4")
-      ];
+      return [];
     }
     return raw.map(function (item, idx) {
       if (typeof item === "string") {
@@ -1757,6 +1769,23 @@
   });
 
   // ---------------------------------------------------------------
+  // QR-kod / länk
+  // ---------------------------------------------------------------
+  var APP_URL = "https://johansperspektiv.github.io/Gubb-Brutality/";
+
+  document.getElementById("btn-open-qr").addEventListener("click", function () {
+    var qrImg = document.getElementById("qr-code-img");
+    qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(APP_URL);
+    var linkEl = document.getElementById("qr-link-text");
+    linkEl.href = APP_URL;
+    linkEl.textContent = APP_URL;
+    document.getElementById("qrModalBackdrop").classList.add("open");
+  });
+  document.getElementById("btn-close-qr").addEventListener("click", function () {
+    document.getElementById("qrModalBackdrop").classList.remove("open");
+  });
+
+  // ---------------------------------------------------------------
   // Lathundar / Hjälp
   // ---------------------------------------------------------------
   document.getElementById("btn-open-howto").addEventListener("click", function () {
@@ -1783,6 +1812,7 @@
   // ---------------------------------------------------------------
   function saveScore() {
     if (!db) { alert("Ingen databasanslutning."); return; }
+    if (!stationsList.length) { alert("Inga stationer finns ännu. Lägg till en station under Inställningar innan du registrerar resultat."); return; }
 
     var pinVal = document.getElementById("pin").value;
     if (pinVal !== currentPin) {
