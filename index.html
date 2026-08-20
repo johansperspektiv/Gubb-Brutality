@@ -740,14 +740,6 @@
   }
 
   if (db) {
-    db.ref("settings/stations").once("value").then(function (snap) {
-      var raw = snap.val();
-      var normalized = normalizeStationsArray(raw);
-      if (JSON.stringify(raw) !== JSON.stringify(normalized)) {
-        db.ref("settings/stations").set(normalized);
-      }
-    });
-
     db.ref("settings/stations").on("value", function (snap) {
       stationsList = normalizeStationsArray(snap.val());
       renderStationSelects();
@@ -957,7 +949,7 @@
 
       var stationRows = (station.targetTypes && station.targetTypes.length)
         ? station.targetTypes.map(function (r) {
-            return { system: r.system, targetCount: r.targetCount, shotsPerTarget: r.shotsPerTarget, steelValue: r.steelValue || 5 };
+            return { system: r.system || "metric", targetCount: r.targetCount || 0, shotsPerTarget: r.shotsPerTarget || 0, steelValue: r.steelValue || 5 };
           })
         : [{ system: "metric", targetCount: 1, shotsPerTarget: 1, steelValue: 5 }];
 
@@ -1206,16 +1198,19 @@
         var updated = collectStationData();
         var newName = updated.name.trim().toLowerCase();
 
-        // Rensa bort ev. andra stationer (inte denna) som redan har exakt
-        // samma namn, så att en uppdatering aldrig kan resultera i en dubblett.
-        var newList = stationsList
-          .filter(function (s) { return s.id === station.id || s.name.trim().toLowerCase() !== newName; })
-          .map(function (s) { return s.id === station.id ? updated : s; });
-
-        db.ref("settings/stations").set(newList).then(function () {
-          alert("Station uppdaterad!");
-        }).catch(function (err) {
-          alert("Kunde inte spara: " + err.message);
+        db.ref("settings/stations").transaction(function (currentRaw) {
+          var list = normalizeStationsArray(currentRaw);
+          // Rensa bort ev. andra stationer (inte denna) som redan har exakt
+          // samma namn, så att en uppdatering aldrig kan resultera i en dubblett.
+          list = list.filter(function (s) { return s.id === station.id || s.name.trim().toLowerCase() !== newName; });
+          list = list.map(function (s) { return s.id === station.id ? updated : s; });
+          return list;
+        }, function (error, committed) {
+          if (error) {
+            alert("Kunde inte spara: " + error.message);
+          } else if (committed) {
+            alert("Station uppdaterad!");
+          }
         });
       });
 
@@ -1245,17 +1240,27 @@
       duplicateBtn.addEventListener("click", function () {
         var data = collectStationData();
         var baseName = data.name.replace(/ - Serie \d+$/, "");
-        var maxSerie = 1;
-        stationsList.forEach(function (s) {
-          if (s.name === baseName) maxSerie = Math.max(maxSerie, 1);
-          var m = s.name.match(new RegExp("^" + baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + " - Serie (\\d+)$"));
-          if (m) maxSerie = Math.max(maxSerie, parseInt(m[1], 10));
-        });
-        data.name = baseName + " - Serie " + (maxSerie + 1);
-        data.id = "s_" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
-        var newList = stationsList.concat([data]);
-        db.ref("settings/stations").set(newList).then(function () {
-          alert("Stationen duplicerad som '" + data.name + "'!");
+
+        db.ref("settings/stations").transaction(function (currentRaw) {
+          var list = normalizeStationsArray(currentRaw);
+          var maxSerie = 1;
+          list.forEach(function (s) {
+            if (s.name === baseName) maxSerie = Math.max(maxSerie, 1);
+            var m = s.name.match(new RegExp("^" + baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + " - Serie (\\d+)$"));
+            if (m) maxSerie = Math.max(maxSerie, parseInt(m[1], 10));
+          });
+          var newData = {};
+          for (var k in data) { if (data.hasOwnProperty(k)) newData[k] = data[k]; }
+          newData.name = baseName + " - Serie " + (maxSerie + 1);
+          newData.id = "s_" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
+          list.push(newData);
+          return list;
+        }, function (error, committed, snapshot) {
+          if (error) {
+            alert("Kunde inte duplicera: " + error.message);
+          } else if (committed) {
+            alert("Stationen duplicerad!");
+          }
         });
       });
 
@@ -1271,8 +1276,10 @@
             return;
           }
           if (!confirm("Ta bort stationen '" + station.name + "' permanent?")) return;
-          var newList = stationsList.filter(function (s) { return s.id !== station.id; });
-          db.ref("settings/stations").set(newList);
+          db.ref("settings/stations").transaction(function (currentRaw) {
+            var list = normalizeStationsArray(currentRaw);
+            return list.filter(function (s) { return s.id !== station.id; });
+          });
         });
       });
 
@@ -1288,9 +1295,11 @@
 
   document.getElementById("btn-add-station").addEventListener("click", function () {
     var newId = "s_" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
-    var newStation = makeStationObj("Station " + (stationsList.length + 1), newId);
-    var newList = stationsList.concat([newStation]);
-    db.ref("settings/stations").set(newList);
+    db.ref("settings/stations").transaction(function (currentRaw) {
+      var list = normalizeStationsArray(currentRaw);
+      list.push(makeStationObj("Station " + (list.length + 1), newId));
+      return list;
+    });
   });
 
   // ---------------------------------------------------------------
@@ -1340,6 +1349,13 @@
     templatePreviewBackdrop.classList.remove("open");
   });
 
+  function parseDistanceValue(distStr) {
+    if (!distStr) return Infinity; // inget angivet avstånd sorteras sist
+    var match = String(distStr).match(/[\d.,]+/);
+    if (!match) return Infinity;
+    return parseFloat(match[0].replace(",", "."));
+  }
+
   function renderTemplates(list) {
     var container = document.getElementById("template-list");
     container.innerHTML = "";
@@ -1349,7 +1365,13 @@
       return;
     }
 
-    list.forEach(function (tmpl, idx) {
+    var sortedEntries = list.map(function (t, i) { return { tmpl: t, origIdx: i }; });
+    sortedEntries.sort(function (a, b) { return parseDistanceValue(a.tmpl.distance) - parseDistanceValue(b.tmpl.distance); });
+
+    sortedEntries.forEach(function (entry) {
+      var tmpl = entry.tmpl;
+      var idx = entry.origIdx;
+
       var row = document.createElement("div");
       row.className = "settings-row";
 
@@ -1359,7 +1381,7 @@
       span.style.overflow = "hidden";
       span.style.textOverflow = "ellipsis";
       span.style.whiteSpace = "nowrap";
-      span.textContent = tmpl.templateName;
+      span.textContent = (tmpl.distance ? tmpl.distance + " – " : "") + tmpl.templateName;
 
       var viewBtn = document.createElement("button");
       viewBtn.type = "button";
@@ -1417,6 +1439,17 @@
 
   function addStationFromTemplate(tmpl) {
     var newId = "s_" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
+    var safeTargetTypes = (tmpl.targetTypes && tmpl.targetTypes.length)
+      ? tmpl.targetTypes.map(function (t) {
+          return {
+            system: t.system || "metric",
+            targetCount: t.targetCount || 0,
+            shotsPerTarget: t.shotsPerTarget || 0,
+            steelValue: t.steelValue || 5
+          };
+        })
+      : [{ system: "metric", targetCount: 1, shotsPerTarget: 1, steelValue: 5 }];
+
     var newStation = {
       id: newId,
       name: tmpl.name || "Station",
@@ -1425,18 +1458,24 @@
       startPositionType: tmpl.startPositionType || "grund",
       startPositionName: tmpl.startPositionName || "",
       startPositionDescription: tmpl.startPositionDescription || "",
-      targetTypes: (tmpl.targetTypes && tmpl.targetTypes.length) ? tmpl.targetTypes : [{ system: "metric", targetCount: 1, shotsPerTarget: 1, steelValue: 5 }],
+      targetTypes: safeTargetTypes,
       hasBonus: !!tmpl.hasBonus,
       bonusValue: 10,
       countNoShoot: tmpl.countNoShoot || 0,
       description: tmpl.description || "",
       imageUrl: tmpl.imageUrl || ""
     };
-    var newList = stationsList.concat([newStation]);
-    db.ref("settings/stations").set(newList).then(function () {
-      alert("Stationen tillagd!");
-    }).catch(function (err) {
-      alert("Kunde inte lägga till stationen: " + err.message);
+
+    db.ref("settings/stations").transaction(function (currentRaw) {
+      var list = normalizeStationsArray(currentRaw);
+      list.push(newStation);
+      return list;
+    }, function (error, committed) {
+      if (error) {
+        alert("Kunde inte lägga till stationen: " + error.message);
+      } else if (committed) {
+        alert("Stationen tillagd!");
+      }
     });
   }
 
