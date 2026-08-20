@@ -218,6 +218,12 @@
       <label>Apptitel</label>
       <input type="text" id="app_title_input" placeholder="Poängräkning">
     </div>
+
+    <div class="info-box">
+      <p style="margin:0 0 8px 0;font-size:13px;">Saknas stationer, mallar eller resultat efter att matchkoder infördes? De ligger kvar, bara på en annan plats i databasen. Tryck här en gång för att hämta in dem under din nuvarande matchkod.</p>
+      <button id="btn-recover-legacy" class="small-btn" style="margin:0;">🔄 Hämta gammal data</button>
+    </div>
+
     <hr>
     <button id="btn-add-station" class="action-btn" type="button">➕ Lägg till ny station</button>
     <button id="btn-add-precision10" class="action-btn" type="button" style="background:var(--primary);">🎯 Lägg till 10× Precision (10 serier à 5 skott)</button>
@@ -610,6 +616,39 @@
     try { window.localStorage.setItem("poangrakning_match_code", cleaned); } catch (e) { /* ignore */ }
     alert("Matchkod ändrad till \"" + cleaned + "\". Appen laddas om.");
     location.reload();
+  });
+
+  document.getElementById("btn-recover-legacy").addEventListener("click", function () {
+    if (!confirm(
+      "Detta hämtar all data (stationer, mallar, resultat, PIN, matchinfo) som fanns innan matchkoder infördes, " +
+      "och skriver in den under din nuvarande matchkod (\"" + matchCode + "\").\n\n" +
+      "Använd bara detta om du själv körde appen innan matchkoder fanns — annars kan det skriva över data du redan lagt in under den här koden.\n\n" +
+      "Fortsätta?"
+    )) return;
+
+    var legacyPaths = ["settings/pin", "settings/stations", "settings/stationTemplates", "settings/matchInfo", "settings/appTitle", "matches/match1", "shooters"];
+    var updates = {};
+
+    var reads = legacyPaths.map(function (p) {
+      return db.ref(p).once("value").then(function (snap) {
+        if (snap.val() !== null) updates[dbPath(p)] = snap.val();
+      });
+    });
+
+    Promise.all(reads).then(function () {
+      if (Object.keys(updates).length === 0) {
+        alert("Ingen gammal data hittades att hämta.");
+        return;
+      }
+      db.ref().update(updates).then(function () {
+        alert("Gammal data hämtad! Appen laddas om.");
+        location.reload();
+      }).catch(function (err) {
+        alert("Kunde inte hämta data: " + err.message);
+      });
+    }).catch(function (err) {
+      alert("Något gick fel: " + err.message);
+    });
   });
 
   // ---------------------------------------------------------------
