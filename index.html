@@ -215,6 +215,7 @@
     </div>
     <hr>
     <button id="btn-add-station" class="action-btn" type="button">➕ Lägg till ny station</button>
+    <button id="btn-add-precision10" class="action-btn" type="button" style="background:var(--primary);">🎯 Lägg till 10× Precision (10 serier à 5 skott)</button>
     <div id="station-cards" style="margin-top:15px;"></div>
 
     <h2 style="margin-top:25px;">Sparade stationsmallar</h2>
@@ -363,17 +364,18 @@
       <li>Skanna QR-koden eller öppna länken du fått av skjutledaren (finns även under "🔗 QR/länk" på förstasidan om du behöver dela den vidare).</li>
       <li>Gå till fliken "Mata in". Om ditt namn inte redan syns som ett snabbval under fältet Skytt, skriv in det och tryck på "➕ Lägg till skytt (ingen PIN)" — du behöver ingen kod för att registrera dig själv.</li>
       <li>Fälten Poäng, Straff, Bonus och Tid är gråtonade och går inte att röra förrän skjutledaren skriver in PIN-koden — det är avsiktligt, så att ingen råkar mata in fel av misstag.</li>
-      <li>Följ resultaten live under fliken "Topplista". Välj din senaste station i listan, eller välj "Total" för att se den samlade ställningen för hela tävlingen. Din placering avgörs av hur stor andel av stationens maxpoäng du får, baserat på din Hit Factor jämfört med vinnarens.</li>
+      <li>Följ resultaten live under fliken "Topplista". Välj din senaste station i listan, eller välj "Total" för att se den samlade ställningen för hela tävlingen. På vanliga stationer avgörs din placering av hur stor andel av stationens maxpoäng du får, baserat på din Hit Factor jämfört med vinnarens. På rena Precision-stationer räknas istället bara dina faktiska poäng — tid spelar ingen roll där.</li>
     </ul>
     <h4>Som skjutledare</h4>
     <ul>
       <li>Dela länken eller QR-koden ("🔗 QR/länk" på förstasidan) med skyttarna innan ni börjar.</li>
       <li>Fyll i Plats, Datum och ditt namn under Skjutledare högst upp på "Mata in" — synas live för alla enheter.</li>
       <li>Gå in på "Inställningar" (PIN krävs, men bara en gång per tillfälle om du redan skrivit in den korrekt på förstasidan) och lägg upp stationerna. Tryck på pennan ✏️ bredvid en station för att öppna redigeringsläget: namn, avstånd, vapen, startposition (Grundställning, Färdigställning, eller egen), måltyper (Metric, HF2020, Stål eller Precision — med antal mål och skott per mål), ev. bonusuppgift (alltid värd 10 poäng), No-shoot-mål, beskrivning och gärna en bild på stationen. Tryck "💾 Spara ändringar" när du är klar.</li>
+      <li>Ska du köra ren precisionsskjutning kan du använda genvägen "🎯 Lägg till 10× Precision" som skapar tio färdiga stationer (10 serier à 5 skott) på en gång. På Precision-stationer krävs ingen tid — bara poängen räknas, och rangordningen baseras direkt på poäng istället för Hit Factor.</li>
       <li>Spara gärna en station som mall (📑) för att snabbt kunna återanvända den vid nästa tävling — sparade mallar hittar du längre ner, sorterade efter avstånd. Ska samma övning köras flera gånger kan du duplicera en station som en ny Serie (🔁) istället för att bygga den från grunden.</li>
-      <li>Under "Mata in": välj station, välj eller skriv in skyttens namn, skriv PIN-koden (låser upp Poäng/Straff/Bonus/Tid), och registrera träffarna med Poäng-knapparna — du kan blanda flera måltyper i samma omgång, varje träff läses upp med röst, och det finns en röd MISS-knapp om skytten bommar helt. Lägg till ev. straff/bonus med plus/minus-knapparna, och ange tiden med sifferknapparna. Tryck sist på "Spara &amp; Beräkna" — en tydlig bekräftelseruta visas när det är klart.</li>
+      <li>Under "Mata in": välj station, välj eller skriv in skyttens namn, skriv PIN-koden (låser upp Poäng/Straff/Bonus/Tid), och registrera träffarna med Poäng-knapparna — du kan blanda flera måltyper i samma omgång, varje träff läses upp med röst, och det finns en röd MISS-knapp om skytten bommar helt (på Precision ger MISS 0 poäng istället för avdrag). Lägg till ev. straff/bonus med plus/minus-knapparna, och ange tiden med sifferknapparna (frivilligt på Precision). Tryck sist på "Spara &amp; Beräkna" — en tydlig bekräftelseruta visas när det är klart.</li>
       <li>Om skytten redan har ett resultat på stationen får du en fråga om du vill skriva över det — säg bara ja om det verkligen ska ändras.</li>
-      <li>Under "Topplista" kan du ändra eller radera ett redan sparat resultat (kräver PIN), nollställa en enskild station, exportera allt som CSV (öppnas direkt i Excel), eller skriva ut/spara som PDF — utskriften tar med samtliga stationer plus Total på en egen sida.</li>
+      <li>Under "Topplista" kan du ändra eller radera ett redan sparat resultat (kräver PIN), nollställa en enskild station, exportera allt som CSV (öppnas direkt i Excel), eller skriva ut/spara som PDF — utskriften tar med samtliga stationer plus Total på en egen sida. Både CSV och PDF visar nu även "Träffbild" per skytt (t.ex. A:2 B:1 C:0 D:1 MISS:0) så du i efterhand kan se exakt vilka träffar som gjordes.</li>
       <li>"☠️ Nollställ aktivitet" längst ner under Topplista raderar alla resultat, skyttar och stationer från dagens tillfälle (men behåller sparade mallar) — kräver PIN-koden två gånger som extra säkerhet, så säkerställ att du exporterat resultatet innan du använder den.</li>
       <li>PIN-koden går att byta under Inställningar, men det kräver även en hemlig "ägarkod" som bara du känner till (finns direkt i appens kod).</li>
     </ul>
@@ -831,7 +833,16 @@
     if (station.imageUrl) {
       html += "<img src='" + escapeHtml(station.imageUrl) + "' alt='Stationsbild'>";
     }
+    if (isPrecisionOnlyStation(station)) {
+      html += "<p><strong>Precision:</strong> Rangordning sker efter poäng — tid registreras inte.</p>";
+    }
     panel.innerHTML = html;
+
+    var timeSecField = document.getElementById("time_sec");
+    if (timeSecField) {
+      timeSecField.placeholder = isPrecisionOnlyStation(station) ? "Tid (valfritt, används ej för Precision)" : "Tryck för att ange tid";
+    }
+
     refreshPinLock();
   }
 
@@ -1343,6 +1354,26 @@
     });
   });
 
+  document.getElementById("btn-add-precision10").addEventListener("click", function () {
+    if (!confirm("Lägg till 10 nya Precision-stationer (10 serier à 5 skott)?")) return;
+    db.ref("settings/stations").transaction(function (currentRaw) {
+      var list = normalizeStationsArray(currentRaw);
+      for (var i = 1; i <= 10; i++) {
+        var newId = "s_" + Date.now().toString(36) + Math.floor(Math.random() * 100000) + "_" + i;
+        var st = makeStationObj("Serie " + i, newId);
+        st.targetTypes = [{ system: "precision", targetCount: 1, shotsPerTarget: 5, steelValue: 5 }];
+        list.push(st);
+      }
+      return list;
+    }, function (error, committed) {
+      if (error) {
+        alert("Kunde inte lägga till: " + error.message);
+      } else if (committed) {
+        alert("10 Precision-stationer tillagda!");
+      }
+    });
+  });
+
   // ---------------------------------------------------------------
   // Stationsmallar
   // ---------------------------------------------------------------
@@ -1736,6 +1767,7 @@
   var currentTally = 0;
   var currentHits = [];
   var modalStationCap = 0;
+  var lastHitBreakdown = {};
 
   function openScoreModal() {
     currentTally = parseInt(document.getElementById("gross_pts").value, 10) || 0;
@@ -1750,6 +1782,12 @@
 
   function closeScoreModalAndApply() {
     document.getElementById("gross_pts").value = currentTally;
+    if (currentHits.length) {
+      lastHitBreakdown = {};
+      currentHits.forEach(function (h) {
+        lastHitBreakdown[h.key] = (lastHitBreakdown[h.key] || 0) + 1;
+      });
+    }
     scoreModalBackdrop.classList.remove("open");
   }
 
@@ -1960,14 +1998,20 @@
 
     var stageId = stageSelect.value;
     var stageName = stageSelect.selectedOptions[0] ? stageSelect.selectedOptions[0].textContent : stageId;
+    var stationForSave = stationsList.filter(function (s) { return s.id === stageId; })[0];
+    var precisionOnly = isPrecisionOnlyStation(stationForSave);
     var name = document.getElementById("shooter_name").value.trim();
     var gross = parseInt(document.getElementById("gross_pts").value, 10) || 0;
     var penalty = parseInt(document.getElementById("penalty_pts").value, 10) || 0;
     var bonus = parseInt(document.getElementById("bonus_pts").value, 10) || 0;
     var time = parseFloat(document.getElementById("time_sec").value) || 0;
 
-    if (!name || time <= 0) {
-      alert("Vänligen fyll i skyttens namn och en giltig tid!");
+    if (!name) {
+      alert("Vänligen fyll i skyttens namn!");
+      return;
+    }
+    if (!precisionOnly && time <= 0) {
+      alert("Vänligen ange en giltig tid!");
       return;
     }
 
@@ -1989,7 +2033,7 @@
       }
 
       var netPoints = gross - penalty + bonus;
-      var hitFactor = netPoints > 0 ? (netPoints / time) : 0;
+      var hitFactor = (netPoints > 0 && time > 0) ? (netPoints / time) : 0;
 
       entryRef.set({
         name: name,
@@ -1998,7 +2042,8 @@
         bonus: bonus,
         net: netPoints,
         time: time,
-        hf: parseFloat(hitFactor.toFixed(4))
+        hf: parseFloat(hitFactor.toFixed(4)),
+        hitBreakdown: lastHitBreakdown
       }).then(function () {
         db.ref("shooters/" + shooterKey).set(name);
 
@@ -2011,6 +2056,7 @@
         document.getElementById("time_sec").value = "";
         penaltyCounter.reset();
         bonusCounter.reset();
+        lastHitBreakdown = {};
       }).catch(function (err) {
         saveBtn.disabled = false;
         setStatus("Fel vid lagring: " + err.message, "status-bad");
@@ -2023,16 +2069,33 @@
   saveBtn.addEventListener("click", saveScore);
 
   // ---------------------------------------------------------------
-  // Rankinghjälpare (Hit Factor-baserad: vinnaren av stationen får
-  // hela stationens maxpoäng, övriga får sin andel av vinnarens HF
-  // multiplicerat med stationens maxpoäng)
+  // Rankinghjälpare
+  // - Vanliga stationer: Hit Factor-baserad. Vinnaren får hela
+  //   stationens maxpoäng, övriga får sin andel av vinnarens HF
+  //   multiplicerat med stationens maxpoäng.
+  // - Rena Precision-stationer: poängbaserad (tid saknar betydelse),
+  //   rangordnas efter faktiska poäng.
   // ---------------------------------------------------------------
-  function rankStationShooters(data, maxPoints) {
+  function isPrecisionOnlyStation(station) {
+    return !!(station && station.targetTypes && station.targetTypes.length &&
+      station.targetTypes.every(function (t) { return t.system === "precision"; }));
+  }
+
+  function rankStationShooters(data, maxPoints, station) {
     var shooters = Object.keys(data).map(function (key) {
       var obj = data[key];
       obj._key = key;
       return obj;
     });
+
+    if (isPrecisionOnlyStation(station)) {
+      shooters.sort(function (a, b) { return b.net - a.net; });
+      return shooters.map(function (s) {
+        var pct = maxPoints > 0 ? ((s.net / maxPoints) * 100) : 0;
+        return { data: s, stagePoints: s.net, pct: pct };
+      });
+    }
+
     shooters.sort(function (a, b) { return b.hf - a.hf; });
 
     var winnerHF = shooters.length ? shooters[0].hf : 0;
@@ -2043,6 +2106,13 @@
       var pct = ratio * 100;
       return { data: s, stagePoints: stagePoints, pct: pct };
     });
+  }
+
+  function formatHitBreakdown(breakdown) {
+    if (!breakdown) return "";
+    var keys = Object.keys(breakdown);
+    if (!keys.length) return "";
+    return keys.map(function (k) { return k + ":" + breakdown[k]; }).join(" ");
   }
 
   // ---------------------------------------------------------------
@@ -2088,18 +2158,21 @@
 
     var station = stationsList.filter(function (s) { return s.id === stageId; })[0];
     var maxPts = station ? stationMaxPoints(station) : 0;
-    var ranked = rankStationShooters(data, maxPts);
+    var precisionOnly = isPrecisionOnlyStation(station);
+    var ranked = rankStationShooters(data, maxPts, station);
 
     ranked.forEach(function (item, index) {
       var s = item.data;
       var card = document.createElement("div");
       card.className = "card";
+      var breakdownText = formatHitBreakdown(s.hitBreakdown);
       card.innerHTML =
         '<div class="rank-badge">#' + (index + 1) + '</div>' +
         '<div class="shooter-info">' +
-          '<span class="hf-badge">HF: ' + s.hf.toFixed(4) + '</span>' +
+          (precisionOnly ? '' : '<span class="hf-badge">HF: ' + s.hf.toFixed(4) + '</span>') +
           '<strong>' + escapeHtml(s.name) + '</strong>' +
-          '<div class="meta-text">Poäng: ' + s.net + ' (' + s.gross + ' - ' + s.penalty + ' straff + ' + (s.bonus || 0) + ' bonus) | Tid: ' + s.time + 's</div>' +
+          '<div class="meta-text">Poäng: ' + s.net + ' (' + s.gross + ' - ' + s.penalty + ' straff + ' + (s.bonus || 0) + ' bonus)' + (precisionOnly ? '' : ' | Tid: ' + s.time + 's') + '</div>' +
+          (breakdownText ? '<div class="meta-text">Träffbild: ' + escapeHtml(breakdownText) + '</div>' : '') +
           '<div class="meta-text" style="color:var(--secondary);font-weight:bold;">Stationspoäng: ' + item.stagePoints.toFixed(2) + ' av ' + maxPts + ' (' + item.pct.toFixed(1) + '%)</div>' +
         '</div>';
 
@@ -2122,7 +2195,7 @@
       var stationData = allData[station.id];
       if (!stationData) return;
       var maxPts = stationMaxPoints(station);
-      var ranked = rankStationShooters(stationData, maxPts);
+      var ranked = rankStationShooters(stationData, maxPts, station);
       ranked.forEach(function (item) {
         var s = item.data;
         if (!totals[s._key]) totals[s._key] = { name: s.name, stagePointsSum: 0, timeSum: 0 };
@@ -2281,16 +2354,16 @@
   document.getElementById("btn-export-csv").addEventListener("click", function () {
     db.ref("matches/match1").once("value").then(function (snapshot) {
       var allData = snapshot.val() || {};
-      var rows = [["Station", "Skytt", "Poäng", "Straff", "Bonus", "Netto", "HitFactor", "Tid", "Stationspoäng", "MaxPoäng", "Procent"]];
+      var rows = [["Station", "Skytt", "Poäng", "Straff", "Bonus", "Netto", "Träffbild", "HitFactor", "Tid", "Stationspoäng", "MaxPoäng", "Procent"]];
 
       stationsList.forEach(function (station) {
         var stationData = allData[station.id];
         if (!stationData) return;
         var maxPts = stationMaxPoints(station);
-        var ranked = rankStationShooters(stationData, maxPts);
+        var ranked = rankStationShooters(stationData, maxPts, station);
         ranked.forEach(function (item) {
           var s = item.data;
-          rows.push([station.name, s.name, s.gross, s.penalty, s.bonus || 0, s.net, s.hf, s.time, item.stagePoints.toFixed(2), maxPts, item.pct.toFixed(1)]);
+          rows.push([station.name, s.name, s.gross, s.penalty, s.bonus || 0, s.net, formatHitBreakdown(s.hitBreakdown), s.hf, s.time, item.stagePoints.toFixed(2), maxPts, item.pct.toFixed(1)]);
         });
       });
 
@@ -2300,10 +2373,10 @@
       totalList.sort(function (a, b) { return b.stagePointsSum - a.stagePointsSum; });
 
       rows.push([]);
-      rows.push(["TOTAL", "Skytt", "", "", "", "", "", "Tid", "Stationspoäng", "MaxPoäng", "Procent"]);
+      rows.push(["TOTAL", "Skytt", "", "", "", "", "", "", "Tid", "Stationspoäng", "MaxPoäng", "Procent"]);
       totalList.forEach(function (t) {
         var pct = grandMax > 0 ? ((t.stagePointsSum / grandMax) * 100).toFixed(1) : "0.0";
-        rows.push(["TOTAL", t.name, "", "", "", "", "", t.timeSum.toFixed(2), t.stagePointsSum.toFixed(2), grandMax, pct]);
+        rows.push(["TOTAL", t.name, "", "", "", "", "", "", t.timeSum.toFixed(2), t.stagePointsSum.toFixed(2), grandMax, pct]);
       });
 
       var csv = rows.map(function (r) {
@@ -2359,10 +2432,15 @@
           section.appendChild(p);
         } else {
           var maxPts = stationMaxPoints(r.station);
-          var ranked = rankStationShooters(r.data, maxPts);
+          var precisionOnly = isPrecisionOnlyStation(r.station);
+          var ranked = rankStationShooters(r.data, maxPts, r.station);
           ranked.forEach(function (item, idx) {
             var line = document.createElement("p");
-            line.textContent = (idx + 1) + ". " + item.data.name + " — " + item.stagePoints.toFixed(2) + "p av " + maxPts + " (" + item.pct.toFixed(1) + "%) — HF " + item.data.hf.toFixed(4) + " — " + item.data.time + "s";
+            var breakdownText = formatHitBreakdown(item.data.hitBreakdown);
+            var text = (idx + 1) + ". " + item.data.name + " — " + item.stagePoints.toFixed(2) + "p av " + maxPts + " (" + item.pct.toFixed(1) + "%)";
+            if (!precisionOnly) text += " — HF " + item.data.hf.toFixed(4) + " — " + item.data.time + "s";
+            if (breakdownText) text += " — Träffbild: " + breakdownText;
+            line.textContent = text;
             section.appendChild(line);
           });
         }
