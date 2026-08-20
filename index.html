@@ -360,18 +360,22 @@
     <h3>Så använder du appen</h3>
     <h4>Som skytt</h4>
     <ul>
-      <li>Öppna länken till appen som du fått av skjutledaren.</li>
+      <li>Skanna QR-koden eller öppna länken du fått av skjutledaren (finns även under "🔗 QR/länk" på förstasidan om du behöver dela den vidare).</li>
       <li>Gå till fliken "Mata in". Om ditt namn inte redan syns som ett snabbval under fältet Skytt, skriv in det och tryck på "➕ Lägg till skytt (ingen PIN)" — du behöver ingen kod för att registrera dig själv.</li>
-      <li>Följ resultaten live under fliken "Topplista". Välj din senaste station i listan, eller välj "Total" för att se den samlade ställningen för hela tävlingen.</li>
-      <li>Poäng, tid, straff och bonus fylls i av skjutledaren efter din omgång — det kräver en PIN-kod som bara skjutledarna har.</li>
+      <li>Fälten Poäng, Straff, Bonus och Tid är gråtonade och går inte att röra förrän skjutledaren skriver in PIN-koden — det är avsiktligt, så att ingen råkar mata in fel av misstag.</li>
+      <li>Följ resultaten live under fliken "Topplista". Välj din senaste station i listan, eller välj "Total" för att se den samlade ställningen för hela tävlingen. Din placering avgörs av hur stor andel av stationens maxpoäng du får, baserat på din Hit Factor jämfört med vinnarens.</li>
     </ul>
     <h4>Som skjutledare</h4>
     <ul>
-      <li>Innan tävlingen: gå in på "Inställningar" (kräver PIN-kod) och lägg upp stationerna — namn, avstånd, målsystem/antal mål/skott, startposition, ev. bonus och beskrivning. Du kan även spara en station som mall för att snabbt återanvända den vid nästa tävling.</li>
-      <li>Under "Mata in": välj rätt station, välj skytten (eller skriv namnet), ange PIN-koden, registrera träffarna med Poäng-knapparna (du kan blanda flera måltyper i samma omgång), lägg till ev. straff/bonus med knapparna, och ange tiden. Tryck sist på "Spara &amp; Beräkna".</li>
+      <li>Dela länken eller QR-koden ("🔗 QR/länk" på förstasidan) med skyttarna innan ni börjar.</li>
+      <li>Fyll i Plats, Datum och ditt namn under Skjutledare högst upp på "Mata in" — synas live för alla enheter.</li>
+      <li>Gå in på "Inställningar" (PIN krävs, men bara en gång per tillfälle om du redan skrivit in den korrekt på förstasidan) och lägg upp stationerna. Tryck på pennan ✏️ bredvid en station för att öppna redigeringsläget: namn, avstånd, vapen, startposition (Grundställning, Färdigställning, eller egen), måltyper (Metric, HF2020, Stål eller Precision — med antal mål och skott per mål), ev. bonusuppgift (alltid värd 10 poäng), No-shoot-mål, beskrivning och gärna en bild på stationen. Tryck "💾 Spara ändringar" när du är klar.</li>
+      <li>Spara gärna en station som mall (📑) för att snabbt kunna återanvända den vid nästa tävling — sparade mallar hittar du längre ner, sorterade efter avstånd. Ska samma övning köras flera gånger kan du duplicera en station som en ny Serie (🔁) istället för att bygga den från grunden.</li>
+      <li>Under "Mata in": välj station, välj eller skriv in skyttens namn, skriv PIN-koden (låser upp Poäng/Straff/Bonus/Tid), och registrera träffarna med Poäng-knapparna — du kan blanda flera måltyper i samma omgång, varje träff läses upp med röst, och det finns en röd MISS-knapp om skytten bommar helt. Lägg till ev. straff/bonus med plus/minus-knapparna, och ange tiden med sifferknapparna. Tryck sist på "Spara &amp; Beräkna" — en tydlig bekräftelseruta visas när det är klart.</li>
       <li>Om skytten redan har ett resultat på stationen får du en fråga om du vill skriva över det — säg bara ja om det verkligen ska ändras.</li>
-      <li>Under "Topplista" kan du ändra eller radera ett redan sparat resultat (kräver PIN), samt nollställa en hel station inför en ny omgång.</li>
-      <li>Efter tävlingen: exportera resultatet som CSV (öppnas direkt i Excel) eller skriv ut/spara som PDF — båda finns under fliken Topplista och tar med samtliga stationer plus totalställningen.</li>
+      <li>Under "Topplista" kan du ändra eller radera ett redan sparat resultat (kräver PIN), nollställa en enskild station, exportera allt som CSV (öppnas direkt i Excel), eller skriva ut/spara som PDF — utskriften tar med samtliga stationer plus Total på en egen sida.</li>
+      <li>"☠️ Nollställ aktivitet" längst ner under Topplista raderar alla resultat, skyttar och stationer från dagens tillfälle (men behåller sparade mallar) — kräver PIN-koden två gånger som extra säkerhet, så säkerställ att du exporterat resultatet innan du använder den.</li>
+      <li>PIN-koden går att byta under Inställningar, men det kräver även en hemlig "ägarkod" som bara du känner till (finns direkt i appens kod).</li>
     </ul>
     <div class="modal-actions">
       <button class="btn-confirm" id="btn-close-howto" type="button">Stäng</button>
@@ -844,16 +848,71 @@
       var card = document.createElement("div");
       card.className = "station-card";
 
-      var h4 = document.createElement("h4");
-      h4.textContent = (idx + 1) + ". " + station.name;
-      card.appendChild(h4);
+      // --- Hopfälld sammanfattning (alltid synlig) ---
+      var summaryRow = document.createElement("div");
+      summaryRow.style.display = "flex";
+      summaryRow.style.alignItems = "center";
+      summaryRow.style.gap = "8px";
+
+      var titleSpan = document.createElement("span");
+      titleSpan.style.flex = "1";
+      titleSpan.style.fontWeight = "bold";
+      titleSpan.style.color = "var(--primary)";
+      titleSpan.style.overflow = "hidden";
+      titleSpan.style.textOverflow = "ellipsis";
+      titleSpan.style.whiteSpace = "nowrap";
+      titleSpan.textContent = (idx + 1) + ". " + station.name + (station.distance ? " (" + station.distance + ")" : "");
+      summaryRow.appendChild(titleSpan);
+
+      var editToggleBtn = document.createElement("button");
+      editToggleBtn.type = "button";
+      editToggleBtn.className = "small-btn";
+      editToggleBtn.style.marginLeft = "0";
+      editToggleBtn.style.marginTop = "0";
+      editToggleBtn.style.flex = "0 0 auto";
+      editToggleBtn.textContent = "✏️";
+      summaryRow.appendChild(editToggleBtn);
+
+      var deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "small-btn";
+      deleteBtn.style.marginLeft = "0";
+      deleteBtn.style.marginTop = "0";
+      deleteBtn.style.flex = "0 0 auto";
+      deleteBtn.style.background = "var(--danger)";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.addEventListener("click", function () {
+        db.ref("matches/match1/" + station.id).once("value").then(function (snap) {
+          if (snap.val() !== null) {
+            alert("Det finns registrerade resultat på denna station. Nollställ den under Topplista innan du tar bort den.");
+            return;
+          }
+          if (!confirm("Ta bort stationen '" + station.name + "' permanent?")) return;
+          db.ref("settings/stations").transaction(function (currentRaw) {
+            var list = normalizeStationsArray(currentRaw);
+            return list.filter(function (s) { return s.id !== station.id; });
+          });
+        });
+      });
+      summaryRow.appendChild(deleteBtn);
+
+      card.appendChild(summaryRow);
+
+      // --- Redigeringsläge (dold tills pennan trycks) ---
+      var editArea = document.createElement("div");
+      editArea.style.display = "none";
+      editArea.style.marginTop = "10px";
+
+      editToggleBtn.addEventListener("click", function () {
+        editArea.style.display = editArea.style.display === "none" ? "block" : "none";
+      });
 
       function addField(labelText, inputEl) {
         var lbl = document.createElement("span");
         lbl.className = "field-label";
         lbl.textContent = labelText;
-        card.appendChild(lbl);
-        card.appendChild(inputEl);
+        editArea.appendChild(lbl);
+        editArea.appendChild(inputEl);
       }
 
       var nameInput = document.createElement("input");
@@ -918,16 +977,16 @@
       }
       startTypeSelect.addEventListener("change", updateStartPosView);
 
-      card.appendChild(startPreview);
-      card.appendChild(customNameInput);
-      card.appendChild(customDescInput);
+      editArea.appendChild(startPreview);
+      editArea.appendChild(customNameInput);
+      editArea.appendChild(customDescInput);
       updateStartPosView();
 
       // --- Måltyper (repeterbara rader) ---
       var typesLabel = document.createElement("span");
       typesLabel.className = "field-label";
       typesLabel.textContent = "Måltyper på stationen";
-      card.appendChild(typesLabel);
+      editArea.appendChild(typesLabel);
 
       var rowHeader = document.createElement("div");
       rowHeader.className = "settings-row";
@@ -942,10 +1001,10 @@
         s.textContent = t;
         rowHeader.appendChild(s);
       });
-      card.appendChild(rowHeader);
+      editArea.appendChild(rowHeader);
 
       var rowsContainer = document.createElement("div");
-      card.appendChild(rowsContainer);
+      editArea.appendChild(rowsContainer);
 
       var stationRows = (station.targetTypes && station.targetTypes.length)
         ? station.targetTypes.map(function (r) {
@@ -1036,7 +1095,7 @@
         renderRows();
         updateComputed();
       });
-      card.appendChild(addRowBtn);
+      editArea.appendChild(addRowBtn);
 
       // --- Bonus ---
       var bonusRow = document.createElement("div");
@@ -1045,10 +1104,10 @@
       bonusCheckbox.type = "checkbox";
       bonusCheckbox.checked = !!station.hasBonus;
       var bonusLabel = document.createElement("span");
-      bonusLabel.textContent = "Bonusuppgift finns på stationen";
+      bonusLabel.textContent = "Bonusuppgift finns på stationen (alltid värd 10 p)";
       bonusRow.appendChild(bonusCheckbox);
       bonusRow.appendChild(bonusLabel);
-      card.appendChild(bonusRow);
+      editArea.appendChild(bonusRow);
 
       bonusCheckbox.addEventListener("change", updateComputed);
 
@@ -1074,7 +1133,7 @@
       imgFileInput.type = "file";
       imgFileInput.accept = "image/*";
       imgFileInput.style.marginTop = "6px";
-      card.appendChild(imgFileInput);
+      editArea.appendChild(imgFileInput);
 
       var imgPreview = document.createElement("img");
       imgPreview.style.maxWidth = "150px";
@@ -1082,7 +1141,7 @@
       imgPreview.style.marginTop = "8px";
       imgPreview.style.borderRadius = "8px";
       if (station.imageUrl) imgPreview.src = station.imageUrl;
-      card.appendChild(imgPreview);
+      editArea.appendChild(imgPreview);
 
       imageUrlInput.addEventListener("input", function () {
         if (imageUrlInput.value) {
@@ -1166,9 +1225,9 @@
       });
 
       updateComputed();
-      card.appendChild(computedBox);
+      editArea.appendChild(computedBox);
 
-      // --- Actions ---
+      // --- Åtgärder (endast i redigeringsläge) ---
       function collectStationData() {
         return {
           id: station.id,
@@ -1209,6 +1268,7 @@
           if (error) {
             alert("Kunde inte spara: " + error.message);
           } else if (committed) {
+            editArea.style.display = "none";
             alert("Station uppdaterad!");
           }
         });
@@ -1264,31 +1324,12 @@
         });
       });
 
-      var deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "danger-btn";
-      deleteBtn.style.marginTop = "0";
-      deleteBtn.textContent = "🗑️ Ta bort station";
-      deleteBtn.addEventListener("click", function () {
-        db.ref("matches/match1/" + station.id).once("value").then(function (snap) {
-          if (snap.val() !== null) {
-            alert("Det finns registrerade resultat på denna station. Nollställ den under Topplista innan du tar bort den.");
-            return;
-          }
-          if (!confirm("Ta bort stationen '" + station.name + "' permanent?")) return;
-          db.ref("settings/stations").transaction(function (currentRaw) {
-            var list = normalizeStationsArray(currentRaw);
-            return list.filter(function (s) { return s.id !== station.id; });
-          });
-        });
-      });
-
       actions.appendChild(saveCardBtn);
       actions.appendChild(templateBtn);
       actions.appendChild(duplicateBtn);
-      card.appendChild(actions);
-      card.appendChild(deleteBtn);
+      editArea.appendChild(actions);
 
+      card.appendChild(editArea);
       container.appendChild(card);
     });
   }
@@ -1560,6 +1601,10 @@
   btnInput.addEventListener("click", function () { switchTab("input"); });
   btnLeaderboard.addEventListener("click", function () { switchTab("leaderboard"); });
   btnSettings.addEventListener("click", function () {
+    if (isPinUnlocked()) {
+      switchTab("settings");
+      return;
+    }
     var pinVal = prompt("Ange PIN-kod för att komma åt inställningar:");
     if (pinVal === null) return;
     if (pinVal !== currentPin) { alert("Fel PIN-kod!"); return; }
