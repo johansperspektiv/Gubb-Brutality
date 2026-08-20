@@ -199,6 +199,7 @@
       <button class="btn-neutral" id="btn-export-csv" type="button">⬇️ Exportera CSV</button>
       <button class="btn-neutral" id="btn-print" type="button">🖨️ Skriv ut / PDF (alla flikar)</button>
     </div>
+    <button id="btn-reset-activity" class="danger-btn" type="button" style="margin-top:20px;">☠️ Nollställ aktivitet</button>
   </div>
 
   <!-- SETTINGS TAB -->
@@ -1379,6 +1380,9 @@
       delBtn.textContent = "🗑️";
       delBtn.style.flex = "0 0 auto";
       delBtn.addEventListener("click", function () {
+        var pinVal = prompt("Ange PIN-kod för att radera mallen '" + tmpl.templateName + "':");
+        if (pinVal === null) return;
+        if (pinVal !== currentPin) { alert("Fel PIN-kod!"); return; }
         if (!confirm("Ta bort mallen '" + tmpl.templateName + "'?")) return;
         var newList = list.slice();
         newList.splice(idx, 1);
@@ -2012,6 +2016,32 @@
   });
 
   // ---------------------------------------------------------------
+  // Nollställ hela dagens aktivitet (skyddad av PIN-kod två gånger)
+  // ---------------------------------------------------------------
+  document.getElementById("btn-reset-activity").addEventListener("click", function () {
+    var pin1 = prompt("Ange PIN-kod för att nollställa hela dagens aktivitet:");
+    if (pin1 === null) return;
+    if (pin1 !== currentPin) { alert("Fel PIN-kod!"); return; }
+
+    var pin2 = prompt("Du kommer nu radera hela dagens aktivitet. Säkerställ att du laddat ner PDF eller skrivit ner resultaten.\n\nAnge PIN-koden igen för att bekräfta:");
+    if (pin2 === null) return;
+    if (pin2 !== currentPin) { alert("Fel PIN-kod!"); return; }
+
+    var updates = {};
+    updates["matches/match1"] = null;
+    updates["shooters"] = null;
+    updates["settings/stations"] = null;
+    updates["settings/matchInfo"] = null;
+
+    db.ref().update(updates).then(function () {
+      setStatus("Dagens aktivitet nollställd.", "status-ok");
+      alert("Allt är nollställt. Sparade stationsmallar finns kvar och kan användas nästa gång.");
+    }).catch(function (err) {
+      alert("Något gick fel: " + err.message);
+    });
+  });
+
+  // ---------------------------------------------------------------
   // Ändra / Radera resultat (kräver PIN)
   // ---------------------------------------------------------------
   var editModalBackdrop = document.getElementById("editModalBackdrop");
@@ -2147,12 +2177,12 @@
       container.appendChild(infoP);
 
       var allData = {};
-      results.forEach(function (r) {
+      results.forEach(function (r, resultIdx) {
         allData[r.station.id] = r.data;
 
         var section = document.createElement("div");
         var h2 = document.createElement("h2");
-        h2.textContent = r.station.name;
+        h2.textContent = (resultIdx + 1) + ". " + r.station.name;
         section.appendChild(h2);
 
         if (!r.data) {
@@ -2177,6 +2207,8 @@
       totalList.sort(function (a, b) { return b.stagePointsSum - a.stagePointsSum; });
 
       var totalSection = document.createElement("div");
+      totalSection.style.pageBreakBefore = "always";
+      totalSection.style.breakBefore = "page";
       var h2t = document.createElement("h2");
       h2t.textContent = "Total";
       totalSection.appendChild(h2t);
