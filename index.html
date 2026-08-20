@@ -220,8 +220,8 @@
     </div>
 
     <div class="info-box">
-      <p style="margin:0 0 8px 0;font-size:13px;">Saknas stationer, mallar eller resultat efter att matchkoder infördes? De ligger kvar, bara på en annan plats i databasen. Tryck här en gång för att hämta in dem under din nuvarande matchkod.</p>
-      <button id="btn-recover-legacy" class="small-btn" style="margin:0;">🔄 Hämta gammal data</button>
+      <p style="margin:0 0 8px 0;font-size:13px;">Hämta det delade bas-utbudet av stationsmallar (byggt upp sedan tidigare) till din mallista — perfekt för en ny användare som snabbt vill komma igång med färdiga stationer. Lägger bara till nya mallar, skriver aldrig över något annat.</p>
+      <button id="btn-recover-legacy" class="small-btn" style="margin:0;">📑 Hämta bas-stationsmallar</button>
     </div>
 
     <hr>
@@ -619,32 +619,39 @@
   });
 
   document.getElementById("btn-recover-legacy").addEventListener("click", function () {
-    if (!confirm(
-      "Detta hämtar all data (stationer, mallar, resultat, PIN, matchinfo) som fanns innan matchkoder infördes, " +
-      "och skriver in den under din nuvarande matchkod (\"" + matchCode + "\").\n\n" +
-      "Använd bara detta om du själv körde appen innan matchkoder fanns — annars kan det skriva över data du redan lagt in under den här koden.\n\n" +
-      "Fortsätta?"
-    )) return;
+    if (!confirm("Hämta bas-stationsmallarna till din mallista? Mallar du redan har (med samma namn) hoppas över — inget skrivs över.")) return;
 
-    var legacyPaths = ["settings/pin", "settings/stations", "settings/stationTemplates", "settings/matchInfo", "settings/appTitle", "matches/match1", "shooters"];
-    var updates = {};
-
-    var reads = legacyPaths.map(function (p) {
-      return db.ref(p).once("value").then(function (snap) {
-        if (snap.val() !== null) updates[dbPath(p)] = snap.val();
-      });
-    });
-
-    Promise.all(reads).then(function () {
-      if (Object.keys(updates).length === 0) {
-        alert("Ingen gammal data hittades att hämta.");
+    db.ref("settings/stationTemplates").once("value").then(function (baseSnap) {
+      var baseList = baseSnap.val() || [];
+      if (!baseList.length) {
+        alert("Inga bas-stationsmallar hittades.");
         return;
       }
-      db.ref().update(updates).then(function () {
-        alert("Gammal data hämtad! Appen laddas om.");
-        location.reload();
-      }).catch(function (err) {
-        alert("Kunde inte hämta data: " + err.message);
+
+      db.ref(dbPath("settings/stationTemplates")).once("value").then(function (mySnap) {
+        var myList = mySnap.val() || [];
+        var existingNames = {};
+        myList.forEach(function (t) { existingNames[t.templateName] = true; });
+
+        var added = 0;
+        baseList.forEach(function (t) {
+          if (!existingNames[t.templateName]) {
+            myList.push(t);
+            existingNames[t.templateName] = true;
+            added++;
+          }
+        });
+
+        if (added === 0) {
+          alert("Du har redan alla bas-stationsmallar.");
+          return;
+        }
+
+        db.ref(dbPath("settings/stationTemplates")).set(myList).then(function () {
+          alert(added + " stationsmall(ar) tillagda i din lista!");
+        }).catch(function (err) {
+          alert("Kunde inte spara: " + err.message);
+        });
       });
     }).catch(function (err) {
       alert("Något gick fel: " + err.message);
