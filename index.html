@@ -18,6 +18,7 @@
   input, select, textarea { width:100%; padding:10px; border:1px solid #CCC; border-radius:6px; box-sizing:border-box; font-size:16px; font-family:inherit; }
   textarea { resize:vertical; }
   input[readonly] { background:#F0F4F8; cursor:pointer; }
+  input:disabled, select:disabled, textarea:disabled { opacity:0.5; background:#F0F4F8; cursor:not-allowed; }
   .hint { font-size:11px; color:#64748B; margin-top:3px; }
   button.action-btn { width:100%; padding:14px; background:var(--secondary); color:#fff; border:none; font-weight:bold; font-size:16px; border-radius:6px; cursor:pointer; margin-top:10px; }
   button.action-btn:disabled { background:#B0BEC5; cursor:not-allowed; }
@@ -801,11 +802,10 @@
   function renderStationInfoPanel() {
     var panel = document.getElementById("station-info");
     var station = getSelectedStation();
-    var bonusBtn = document.getElementById("btn-bonus-add");
 
     if (!station) {
       panel.innerHTML = "";
-      if (bonusBtn) bonusBtn.disabled = true;
+      refreshPinLock();
       return;
     }
 
@@ -836,10 +836,7 @@
       html += "<img src='" + escapeHtml(station.imageUrl) + "' alt='Stationsbild'>";
     }
     panel.innerHTML = html;
-
-    if (bonusBtn) {
-      bonusBtn.disabled = !station.hasBonus;
-    }
+    refreshPinLock();
   }
 
   stageSelect.addEventListener("change", renderStationInfoPanel);
@@ -1207,9 +1204,18 @@
       saveCardBtn.textContent = "💾 Spara ändringar";
       saveCardBtn.addEventListener("click", function () {
         var updated = collectStationData();
-        var newList = stationsList.map(function (s) { return s.id === station.id ? updated : s; });
+        var newName = updated.name.trim().toLowerCase();
+
+        // Rensa bort ev. andra stationer (inte denna) som redan har exakt
+        // samma namn, så att en uppdatering aldrig kan resultera i en dubblett.
+        var newList = stationsList
+          .filter(function (s) { return s.id === station.id || s.name.trim().toLowerCase() !== newName; })
+          .map(function (s) { return s.id === station.id ? updated : s; });
+
         db.ref("settings/stations").set(newList).then(function () {
           alert("Station uppdaterad!");
+        }).catch(function (err) {
+          alert("Kunde inte spara: " + err.message);
         });
       });
 
@@ -1413,22 +1419,24 @@
     var newId = "s_" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
     var newStation = {
       id: newId,
-      name: tmpl.name,
-      distance: tmpl.distance,
-      weapon: tmpl.weapon,
-      startPositionType: tmpl.startPositionType,
-      startPositionName: tmpl.startPositionName,
-      startPositionDescription: tmpl.startPositionDescription,
-      targetTypes: tmpl.targetTypes,
-      hasBonus: tmpl.hasBonus,
-      bonusValue: tmpl.bonusValue,
-      countNoShoot: tmpl.countNoShoot,
-      description: tmpl.description,
-      imageUrl: tmpl.imageUrl
+      name: tmpl.name || "Station",
+      distance: tmpl.distance || "",
+      weapon: tmpl.weapon || "Båda",
+      startPositionType: tmpl.startPositionType || "grund",
+      startPositionName: tmpl.startPositionName || "",
+      startPositionDescription: tmpl.startPositionDescription || "",
+      targetTypes: (tmpl.targetTypes && tmpl.targetTypes.length) ? tmpl.targetTypes : [{ system: "metric", targetCount: 1, shotsPerTarget: 1, steelValue: 5 }],
+      hasBonus: !!tmpl.hasBonus,
+      bonusValue: 10,
+      countNoShoot: tmpl.countNoShoot || 0,
+      description: tmpl.description || "",
+      imageUrl: tmpl.imageUrl || ""
     };
     var newList = stationsList.concat([newStation]);
     db.ref("settings/stations").set(newList).then(function () {
       alert("Stationen tillagd!");
+    }).catch(function (err) {
+      alert("Kunde inte lägga till stationen: " + err.message);
     });
   }
 
@@ -1442,6 +1450,7 @@
     db.ref("settings/pin").on("value", function (snap) {
       var val = snap.val();
       if (val) currentPin = val;
+      if (typeof refreshPinLock === "function") refreshPinLock();
     });
   }
 
@@ -1593,6 +1602,41 @@
   var bonusCounter = setupCounter("bonus_display", "bonus_pts", "btn-bonus-add", "btn-bonus-undo", "Bonus", 10);
 
   // ---------------------------------------------------------------
+  // PIN-lås: Poäng, Straff, Bonus och Tid ska vara oåtkomliga tills
+  // rätt PIN-kod är angiven, så att en skytt som lägger till sig själv
+  // (utan PIN) inte av misstag kan ändra dessa fält.
+  // ---------------------------------------------------------------
+  var pinField = document.getElementById("pin");
+  var grossPtsEl = document.getElementById("gross_pts");
+  var timeSecEl = document.getElementById("time_sec");
+
+  function isPinUnlocked() {
+    return pinField.value !== "" && pinField.value === currentPin;
+  }
+
+  function refreshPinLock() {
+    var unlocked = isPinUnlocked();
+    var station = getSelectedStation();
+
+    document.getElementById("btn-penalty-add").disabled = !unlocked;
+    document.getElementById("btn-penalty-undo").disabled = !unlocked;
+
+    var bonusBtn = document.getElementById("btn-bonus-add");
+    bonusBtn.disabled = !unlocked || !(station && station.hasBonus);
+    document.getElementById("btn-bonus-undo").disabled = !unlocked;
+
+    grossPtsEl.style.opacity = unlocked ? "1" : "0.5";
+    timeSecEl.style.opacity = unlocked ? "1" : "0.5";
+
+    document.getElementById("match_location").disabled = !unlocked;
+    document.getElementById("match_date").disabled = !unlocked;
+    document.getElementById("match_officer").disabled = !unlocked;
+  }
+
+  pinField.addEventListener("input", refreshPinLock);
+  refreshPinLock();
+
+  // ---------------------------------------------------------------
   // Poäng-knappar (Metric / HF2020 / Stål / Precision)
   // ---------------------------------------------------------------
   var scoreModalBackdrop = document.getElementById("scoreModalBackdrop");
@@ -1625,7 +1669,13 @@
     scoreModalBackdrop.classList.remove("open");
   }
 
-  document.getElementById("gross_pts").addEventListener("click", openScoreModal);
+  document.getElementById("gross_pts").addEventListener("click", function () {
+    if (!isPinUnlocked()) {
+      alert("Ange rätt PIN-kod ovan för att kunna registrera poäng.");
+      return;
+    }
+    openScoreModal();
+  });
   document.getElementById("btn-score-cancel").addEventListener("click", closeScoreModalAndApply);
 
   document.getElementById("btn-score-reset-top").addEventListener("click", function () {
@@ -1735,6 +1785,10 @@
   });
 
   document.getElementById("time_sec").addEventListener("click", function () {
+    if (!isPinUnlocked()) {
+      alert("Ange rätt PIN-kod ovan för att kunna registrera tid.");
+      return;
+    }
     timeString = document.getElementById("time_sec").value || "";
     timeDisplay.textContent = timeString === "" ? "0" : timeString;
     timeModalBackdrop.classList.add("open");
