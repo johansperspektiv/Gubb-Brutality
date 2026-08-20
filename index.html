@@ -84,6 +84,14 @@
   .confirm-icon { text-align:center; font-size:40px; margin-bottom:5px; }
   .confirm-text { text-align:center; font-size:16px; margin-bottom:15px; white-space:pre-line; }
 
+  .redcross-icon { display:inline-block; width:18px; height:18px; background:#E53E3E; position:relative; vertical-align:middle; margin-right:6px; border-radius:2px; top:-1px; }
+  .redcross-icon::before, .redcross-icon::after { content:""; position:absolute; background:#fff; }
+  .redcross-icon::before { top:3px; bottom:3px; left:7px; width:4px; }
+  .redcross-icon::after { left:3px; right:3px; top:7px; height:4px; }
+  .redcross-icon-lg { width:32px; height:32px; }
+  .redcross-icon-lg::before { top:5px; bottom:5px; left:13px; width:6px; }
+  .redcross-icon-lg::after { left:5px; right:5px; top:13px; height:6px; }
+
   #print-view { display:none; }
 
   @media print {
@@ -170,7 +178,7 @@
     </div>
     <div class="modal-actions" style="margin-top:8px;">
       <button class="btn-neutral" id="btn-open-latmask" type="button">📋 Skjutledare latmask</button>
-      <button class="btn-neutral" id="btn-open-skottskada" type="button">➕ SKOTTSKADA</button>
+      <button class="btn-neutral" id="btn-open-skottskada" type="button"><span class="redcross-icon"></span>SKOTTSKADA</button>
     </div>
   </div>
 
@@ -389,7 +397,7 @@
 <!-- SKOTTSKADA MODAL -->
 <div class="modal-backdrop" id="skottskadaModalBackdrop">
   <div class="modal-box" style="text-align:left;">
-    <h3>➕ AKUT OMHÄNDERTAGANDE<br>SKOTTSKADA / VÅDASKOTT</h3>
+    <h3><span class="redcross-icon redcross-icon-lg" style="display:block;margin:0 auto 8px;"></span>AKUT OMHÄNDERTAGANDE<br>SKOTTSKADA / VÅDASKOTT</h3>
 
     <h4>L – LIVSFARLIGT LÄGE</h4>
     <p><em>Kontrollera → Åtgärda</em></p>
@@ -488,7 +496,7 @@
   var currentPin = "1234";
   // Ändra raden nedan till en hemlig kod bara DU känner till.
   // Den krävs (utöver PIN-koden) för att kunna byta PIN-koden.
-  var OWNER_CODE = "moon";
+  var OWNER_CODE = "byt-mig-agarkod";
 
   var firebaseConfig = {
     apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
@@ -778,7 +786,7 @@
     html += "<p>Totalt antal skott: <strong>" + totalShots + "</strong> | Max poäng: <strong>" + maxPts + "</strong> (" + pct + "% av matchen)</p>";
     html += "<p>Måltyper: " + (typeLines || "-") + "</p>";
     if (station.countNoShoot) html += "<p>No-shoot: " + station.countNoShoot + " st (skjuts EJ)</p>";
-    if (station.hasBonus) html += "<p>Bonusuppgift: " + (station.bonusValue || 10) + " p</p>";
+    if (station.hasBonus) html += "<p>Bonusuppgift: 10 p</p>";
     html += "<p>Vapen: " + escapeHtml(station.weapon || "-") + "</p>";
     html += "<p>Startposition: <strong>" + escapeHtml(startPos.name) + "</strong></p>";
     if (station.imageUrl) {
@@ -788,8 +796,6 @@
 
     if (bonusBtn) {
       bonusBtn.disabled = !station.hasBonus;
-      bonusBtn.textContent = "+" + (station.bonusValue || 10);
-      bonusCounter.setStep(station.bonusValue || 10);
     }
   }
 
@@ -891,6 +897,21 @@
       typesLabel.textContent = "Måltyper på stationen";
       card.appendChild(typesLabel);
 
+      var rowHeader = document.createElement("div");
+      rowHeader.className = "settings-row";
+      rowHeader.style.fontSize = "11px";
+      rowHeader.style.color = "#64748B";
+      rowHeader.style.fontWeight = "bold";
+      rowHeader.style.marginBottom = "2px";
+      ["Målsystem", "Antal mål", "Skott per mål"].forEach(function (t) {
+        var s = document.createElement("span");
+        s.style.flex = "1";
+        s.style.width = "auto";
+        s.textContent = t;
+        rowHeader.appendChild(s);
+      });
+      card.appendChild(rowHeader);
+
       var rowsContainer = document.createElement("div");
       card.appendChild(rowsContainer);
 
@@ -904,7 +925,7 @@
       computedBox.className = "computed-box";
 
       function updateComputed() {
-        var tmpStation = { targetTypes: stationRows, hasBonus: bonusCheckbox.checked, bonusValue: parseInt(bonusValueInput.value, 10) || 10 };
+        var tmpStation = { targetTypes: stationRows, hasBonus: bonusCheckbox.checked, bonusValue: 10 };
         var shots = stationRows.reduce(function (sum, t) { return sum + (t.targetCount || 0) * (t.shotsPerTarget || 0); }, 0);
         var pts = stationMaxPoints(tmpStation);
         computedBox.textContent = "Totalt antal skott: " + shots + " | Max poäng: " + pts;
@@ -997,13 +1018,6 @@
       bonusRow.appendChild(bonusLabel);
       card.appendChild(bonusRow);
 
-      var bonusValueInput = document.createElement("input");
-      bonusValueInput.type = "number";
-      bonusValueInput.min = "0";
-      bonusValueInput.value = station.bonusValue || 10;
-      bonusValueInput.style.marginTop = "6px";
-      bonusValueInput.addEventListener("input", updateComputed);
-      addField("Bonuspoäng", bonusValueInput);
       bonusCheckbox.addEventListener("change", updateComputed);
 
       var countNoShootInput = document.createElement("input");
@@ -1086,7 +1100,7 @@
           startPositionDescription: startTypeSelect.value === "egen" ? customDescInput.value : "",
           targetTypes: stationRows.map(function (r) { return { system: r.system, targetCount: r.targetCount, shotsPerTarget: r.shotsPerTarget, steelValue: r.steelValue }; }),
           hasBonus: bonusCheckbox.checked,
-          bonusValue: parseInt(bonusValueInput.value, 10) || 10,
+          bonusValue: 10,
           countNoShoot: parseInt(countNoShootInput.value, 10) || 0,
           description: descriptionInput.value,
           imageUrl: imageUrlInput.value.trim()
@@ -1209,7 +1223,7 @@
     html += "<p><strong>Vapen:</strong> " + escapeHtml(tmpl.weapon || "-") + "</p>";
     html += "<p><strong>Måltyper:</strong><br>" + (typeLines || "-") + "</p>";
     html += "<p><strong>Totalt antal skott:</strong> " + shots + " | <strong>Max poäng:</strong> " + maxPts + "</p>";
-    if (tmpl.hasBonus) html += "<p><strong>Bonus:</strong> " + (tmpl.bonusValue || 10) + " p</p>";
+    if (tmpl.hasBonus) html += "<p><strong>Bonus:</strong> 10 p</p>";
     if (tmpl.countNoShoot) html += "<p><strong>No-shoot:</strong> " + tmpl.countNoShoot + " st</p>";
     html += "<p><strong>Startposition:</strong> " + escapeHtml(startPos.name || "-") + "</p>";
     if (tmpl.description) html += "<p><strong>Beskrivning:</strong> " + escapeHtml(tmpl.description) + "</p>";
@@ -1745,7 +1759,9 @@
   saveBtn.addEventListener("click", saveScore);
 
   // ---------------------------------------------------------------
-  // Rankinghjälpare (poängbaserad: netto poäng, tid som tiebreak)
+  // Rankinghjälpare (Hit Factor-baserad: vinnaren av stationen får
+  // hela stationens maxpoäng, övriga får sin andel av vinnarens HF
+  // multiplicerat med stationens maxpoäng)
   // ---------------------------------------------------------------
   function rankStationShooters(data, maxPoints) {
     var shooters = Object.keys(data).map(function (key) {
@@ -1753,13 +1769,15 @@
       obj._key = key;
       return obj;
     });
-    shooters.sort(function (a, b) {
-      if (b.net !== a.net) return b.net - a.net;
-      return a.time - b.time;
-    });
+    shooters.sort(function (a, b) { return b.hf - a.hf; });
+
+    var winnerHF = shooters.length ? shooters[0].hf : 0;
+
     return shooters.map(function (s) {
-      var pct = maxPoints > 0 ? ((s.net / maxPoints) * 100) : 0;
-      return { data: s, pct: pct };
+      var ratio = winnerHF > 0 ? (s.hf / winnerHF) : 0;
+      var stagePoints = ratio * maxPoints;
+      var pct = ratio * 100;
+      return { data: s, stagePoints: stagePoints, pct: pct };
     });
   }
 
@@ -1818,7 +1836,7 @@
           '<span class="hf-badge">HF: ' + s.hf.toFixed(4) + '</span>' +
           '<strong>' + escapeHtml(s.name) + '</strong>' +
           '<div class="meta-text">Poäng: ' + s.net + ' (' + s.gross + ' - ' + s.penalty + ' straff + ' + (s.bonus || 0) + ' bonus) | Tid: ' + s.time + 's</div>' +
-          '<div class="meta-text" style="color:var(--secondary);font-weight:bold;">Stationspoäng: ' + s.net + ' av ' + maxPts + ' (' + item.pct.toFixed(1) + '%)</div>' +
+          '<div class="meta-text" style="color:var(--secondary);font-weight:bold;">Stationspoäng: ' + item.stagePoints.toFixed(2) + ' av ' + maxPts + ' (' + item.pct.toFixed(1) + '%)</div>' +
         '</div>';
 
       var editBtn = document.createElement("button");
@@ -1839,11 +1857,13 @@
     stationsList.forEach(function (station) {
       var stationData = allData[station.id];
       if (!stationData) return;
-      Object.keys(stationData).forEach(function (key) {
-        var s = stationData[key];
-        if (!totals[key]) totals[key] = { name: s.name, netSum: 0, timeSum: 0 };
-        totals[key].netSum += s.net;
-        totals[key].timeSum += s.time;
+      var maxPts = stationMaxPoints(station);
+      var ranked = rankStationShooters(stationData, maxPts);
+      ranked.forEach(function (item) {
+        var s = item.data;
+        if (!totals[s._key]) totals[s._key] = { name: s.name, stagePointsSum: 0, timeSum: 0 };
+        totals[s._key].stagePointsSum += item.stagePoints;
+        totals[s._key].timeSum += s.time;
       });
     });
     return totals;
@@ -1864,20 +1884,17 @@
 
     var grandMax = stationsList.reduce(function (sum, s) { return sum + stationMaxPoints(s); }, 0);
 
-    list.sort(function (a, b) {
-      if (b.netSum !== a.netSum) return b.netSum - a.netSum;
-      return a.timeSum - b.timeSum;
-    });
+    list.sort(function (a, b) { return b.stagePointsSum - a.stagePointsSum; });
 
     list.forEach(function (s, index) {
-      var pct = grandMax > 0 ? ((s.netSum / grandMax) * 100).toFixed(1) : "0.0";
+      var pct = grandMax > 0 ? ((s.stagePointsSum / grandMax) * 100).toFixed(1) : "0.0";
       var card = document.createElement("div");
       card.className = "card";
       card.innerHTML =
         '<div class="rank-badge">#' + (index + 1) + '</div>' +
         '<div class="shooter-info">' +
           '<strong>' + escapeHtml(s.name) + '</strong>' +
-          '<div class="total-highlight">Poäng totalt: ' + s.netSum + ' av ' + grandMax + ' (' + pct + '%)</div>' +
+          '<div class="total-highlight">Stationspoäng totalt: ' + s.stagePointsSum.toFixed(2) + ' av ' + grandMax + ' (' + pct + '%)</div>' +
           '<div class="meta-text">Tid totalt: ' + s.timeSum.toFixed(2) + 's</div>' +
         '</div>';
       listDiv.appendChild(card);
@@ -1974,7 +1991,7 @@
   document.getElementById("btn-export-csv").addEventListener("click", function () {
     db.ref("matches/match1").once("value").then(function (snapshot) {
       var allData = snapshot.val() || {};
-      var rows = [["Station", "Skytt", "Poäng", "Straff", "Bonus", "Netto", "Tid", "MaxPoäng", "Procent"]];
+      var rows = [["Station", "Skytt", "Poäng", "Straff", "Bonus", "Netto", "HitFactor", "Tid", "Stationspoäng", "MaxPoäng", "Procent"]];
 
       stationsList.forEach(function (station) {
         var stationData = allData[station.id];
@@ -1983,23 +2000,20 @@
         var ranked = rankStationShooters(stationData, maxPts);
         ranked.forEach(function (item) {
           var s = item.data;
-          rows.push([station.name, s.name, s.gross, s.penalty, s.bonus || 0, s.net, s.time, maxPts, item.pct.toFixed(1)]);
+          rows.push([station.name, s.name, s.gross, s.penalty, s.bonus || 0, s.net, s.hf, s.time, item.stagePoints.toFixed(2), maxPts, item.pct.toFixed(1)]);
         });
       });
 
       var totals = computeTotals(allData);
       var grandMax = stationsList.reduce(function (sum, s) { return sum + stationMaxPoints(s); }, 0);
       var totalList = Object.keys(totals).map(function (k) { return totals[k]; });
-      totalList.sort(function (a, b) {
-        if (b.netSum !== a.netSum) return b.netSum - a.netSum;
-        return a.timeSum - b.timeSum;
-      });
+      totalList.sort(function (a, b) { return b.stagePointsSum - a.stagePointsSum; });
 
       rows.push([]);
-      rows.push(["TOTAL", "Skytt", "", "", "", "Netto", "Tid", "MaxPoäng", "Procent"]);
+      rows.push(["TOTAL", "Skytt", "", "", "", "", "", "Tid", "Stationspoäng", "MaxPoäng", "Procent"]);
       totalList.forEach(function (t) {
-        var pct = grandMax > 0 ? ((t.netSum / grandMax) * 100).toFixed(1) : "0.0";
-        rows.push(["TOTAL", t.name, "", "", "", t.netSum, t.timeSum.toFixed(2), grandMax, pct]);
+        var pct = grandMax > 0 ? ((t.stagePointsSum / grandMax) * 100).toFixed(1) : "0.0";
+        rows.push(["TOTAL", t.name, "", "", "", "", "", t.timeSum.toFixed(2), t.stagePointsSum.toFixed(2), grandMax, pct]);
       });
 
       var csv = rows.map(function (r) {
@@ -2058,7 +2072,7 @@
           var ranked = rankStationShooters(r.data, maxPts);
           ranked.forEach(function (item, idx) {
             var line = document.createElement("p");
-            line.textContent = (idx + 1) + ". " + item.data.name + " — " + item.data.net + "p av " + maxPts + " (" + item.pct.toFixed(1) + "%) — " + item.data.time + "s";
+            line.textContent = (idx + 1) + ". " + item.data.name + " — " + item.stagePoints.toFixed(2) + "p av " + maxPts + " (" + item.pct.toFixed(1) + "%) — HF " + item.data.hf.toFixed(4) + " — " + item.data.time + "s";
             section.appendChild(line);
           });
         }
@@ -2068,19 +2082,16 @@
       var totals = computeTotals(allData);
       var grandMax = stationsList.reduce(function (sum, s) { return sum + stationMaxPoints(s); }, 0);
       var totalList = Object.keys(totals).map(function (k) { return totals[k]; });
-      totalList.sort(function (a, b) {
-        if (b.netSum !== a.netSum) return b.netSum - a.netSum;
-        return a.timeSum - b.timeSum;
-      });
+      totalList.sort(function (a, b) { return b.stagePointsSum - a.stagePointsSum; });
 
       var totalSection = document.createElement("div");
       var h2t = document.createElement("h2");
       h2t.textContent = "Total";
       totalSection.appendChild(h2t);
       totalList.forEach(function (t, idx) {
-        var pct = grandMax > 0 ? ((t.netSum / grandMax) * 100).toFixed(1) : "0.0";
+        var pct = grandMax > 0 ? ((t.stagePointsSum / grandMax) * 100).toFixed(1) : "0.0";
         var line = document.createElement("p");
-        line.textContent = (idx + 1) + ". " + t.name + " — " + t.netSum + "p av " + grandMax + " (" + pct + "%) — " + t.timeSum.toFixed(2) + "s";
+        line.textContent = (idx + 1) + ". " + t.name + " — " + t.stagePointsSum.toFixed(2) + "p av " + grandMax + " (" + pct + "%) — " + t.timeSum.toFixed(2) + "s";
         totalSection.appendChild(line);
       });
       container.appendChild(totalSection);
