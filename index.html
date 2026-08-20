@@ -1094,25 +1094,73 @@
       imgFileInput.addEventListener("change", function (e) {
         var file = e.target.files && e.target.files[0];
         if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function (evt) {
-          var img = new Image();
-          img.onload = function () {
-            var maxW = 800;
-            var scale = Math.min(1, maxW / img.width);
-            var canvas = document.createElement("canvas");
-            canvas.width = Math.round(img.width * scale);
-            canvas.height = Math.round(img.height * scale);
-            var ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            var dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-            imageUrlInput.value = dataUrl;
-            imgPreview.src = dataUrl;
-            imgPreview.style.display = "block";
+
+        if (file.size > 15 * 1024 * 1024) {
+          alert("Bilden är väldigt stor (över 15 MB). Välj en mindre bild, eller ta en ny bild med lägre upplösning i kameran.");
+          imgFileInput.value = "";
+          return;
+        }
+
+        function finish(dataUrl) {
+          imageUrlInput.value = dataUrl;
+          imgPreview.src = dataUrl;
+          imgPreview.style.display = "block";
+        }
+
+        function resizeViaCanvasElement(imgEl) {
+          var maxDim = 800;
+          var scale = Math.min(1, maxDim / Math.max(imgEl.width, imgEl.height));
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(imgEl.width * scale));
+          canvas.height = Math.max(1, Math.round(imgEl.height * scale));
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL("image/jpeg", 0.7);
+        }
+
+        function fallbackViaFileReader() {
+          var reader = new FileReader();
+          reader.onload = function (evt) {
+            var img = new Image();
+            img.onload = function () {
+              try {
+                finish(resizeViaCanvasElement(img));
+              } catch (err) {
+                alert("Kunde inte bearbeta bilden. Prova en mindre bild eller en annan bildfil.");
+              }
+            };
+            img.onerror = function () {
+              alert("Kunde inte läsa bilden.");
+            };
+            img.src = evt.target.result;
           };
-          img.src = evt.target.result;
-        };
-        reader.readAsDataURL(file);
+          reader.onerror = function () {
+            alert("Kunde inte läsa filen.");
+          };
+          reader.readAsDataURL(file);
+        }
+
+        // Använd webbläsarens inbyggda, minnessnåla nedskalning när den finns
+        // (avlastar telefonen betydligt jämfört med att läsa in hela originalbilden)
+        if (window.createImageBitmap) {
+          createImageBitmap(file, { resizeWidth: 800, resizeQuality: "medium" }).then(function (bitmap) {
+            try {
+              var canvas = document.createElement("canvas");
+              canvas.width = bitmap.width;
+              canvas.height = bitmap.height;
+              var ctx = canvas.getContext("2d");
+              ctx.drawImage(bitmap, 0, 0);
+              if (bitmap.close) bitmap.close();
+              finish(canvas.toDataURL("image/jpeg", 0.7));
+            } catch (err) {
+              fallbackViaFileReader();
+            }
+          }).catch(function () {
+            fallbackViaFileReader();
+          });
+        } else {
+          fallbackViaFileReader();
+        }
       });
 
       updateComputed();
