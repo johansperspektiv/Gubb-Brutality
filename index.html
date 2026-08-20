@@ -33,8 +33,8 @@
   .status-ok { background:#D1E7DD; color:#0F5132; }
   .status-bad { background:#F8D7DA; color:#842029; }
   .status-wait { background:#FFF3CD; color:#664D03; }
-  .settings-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-  .settings-row input { flex:1; }
+  .settings-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  .settings-row input, .settings-row select { flex:1; min-width:70px; }
   .settings-row span { width:70px; font-size:13px; color:#64748B; }
 
   .counter-row { display:flex; align-items:center; gap:10px; }
@@ -51,7 +51,7 @@
 
   .info-box { background:#EEF4FF; border:1px solid #C7D8F5; border-radius:8px; padding:12px; margin-bottom:12px; }
   .info-box img { display:block; max-width:100%; border-radius:8px; margin-top:8px; }
-  .info-box p { margin:4px 0; }
+  .info-box p { margin:4px 0; font-size:13px; }
 
   .station-card { border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:12px; background:#F8FAFC; }
   .field-label { font-size:12px; font-weight:bold; margin-top:8px; margin-bottom:2px; display:block; color:#4A5568; }
@@ -59,6 +59,8 @@
   .checkbox-row input { width:auto; }
   .station-card-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
   .station-card-actions button { flex:1; min-width:100px; padding:8px; border:none; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; }
+  .preset-preview { background:#EEF4FF; border-radius:6px; padding:8px; font-size:12px; margin-top:6px; white-space:pre-line; }
+  .computed-box { background:#FFF3CD; border-radius:6px; padding:8px; font-size:12px; margin-top:8px; font-weight:bold; }
 
   .modal-backdrop { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; padding:15px; box-sizing:border-box; }
   .modal-backdrop.open { display:flex; }
@@ -82,10 +84,13 @@
   .confirm-icon { text-align:center; font-size:40px; margin-bottom:5px; }
   .confirm-text { text-align:center; font-size:16px; margin-bottom:15px; white-space:pre-line; }
 
+  #print-view { display:none; }
+
   @media print {
-    .tab-buttons, .action-btn, #status, #btn-clear, #btn-export-csv, #btn-print, .small-btn, .modal-backdrop { display:none !important; }
-    body { background:#fff; padding:0; }
-    .container { box-shadow:none; max-width:100%; }
+    body * { visibility:hidden; }
+    #print-view, #print-view * { visibility:visible; }
+    #print-view { display:block !important; position:absolute; top:0; left:0; width:100%; padding:20px; box-sizing:border-box; }
+    #print-view h2 { border-bottom:1px solid #999; padding-bottom:4px; margin-top:20px; }
   }
 </style>
 </head>
@@ -103,6 +108,16 @@
   <!-- INPUT TAB -->
   <div id="input-tab">
     <h2>Registrera resultat</h2>
+
+    <div class="form-group">
+      <label>Plats</label>
+      <input type="text" id="match_location" placeholder="Var hålls tävlingen?">
+    </div>
+    <div class="form-group">
+      <label>Skjutledare</label>
+      <input type="text" id="match_officer" placeholder="Vem leder skyttet?">
+    </div>
+
     <div class="form-group">
       <label>PIN-kod</label>
       <input type="password" id="pin" placeholder="Ange PIN">
@@ -151,8 +166,11 @@
     <div id="status" class="status-wait">Ansluter till databasen…</div>
 
     <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-neutral" id="btn-open-howto" type="button">❓ Så använder du appen</button>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
       <button class="btn-neutral" id="btn-open-latmask" type="button">📋 Skjutledare latmask</button>
-      <button class="btn-neutral" id="btn-open-skottskada" type="button">🚨 SKOTTSKADA</button>
+      <button class="btn-neutral" id="btn-open-skottskada" type="button">➕ SKOTTSKADA</button>
     </div>
   </div>
 
@@ -167,7 +185,7 @@
     <button id="btn-clear" class="danger-btn" type="button">🗑️ Nollställ denna station</button>
     <div class="modal-actions" style="margin-top:15px;">
       <button class="btn-neutral" id="btn-export-csv" type="button">⬇️ Exportera CSV</button>
-      <button class="btn-neutral" id="btn-print" type="button">🖨️ Skriv ut / PDF</button>
+      <button class="btn-neutral" id="btn-print" type="button">🖨️ Skriv ut / PDF (alla flikar)</button>
     </div>
   </div>
 
@@ -193,6 +211,8 @@
   </div>
 </div>
 
+<div id="print-view"></div>
+
 <!-- SCORE ENTRY MODAL -->
 <div class="modal-backdrop" id="scoreModalBackdrop">
   <div class="modal-box">
@@ -202,6 +222,7 @@
       <button class="system-btn" data-system="metric" type="button">Metric</button>
       <button class="system-btn" data-system="hf2020" type="button">HF2020</button>
       <button class="system-btn" data-system="steel" type="button">Stål</button>
+      <button class="system-btn" data-system="precision" type="button">Precision</button>
       <div class="modal-actions">
         <button class="btn-neutral" id="btn-score-reset-top" type="button">Nollställ allt</button>
         <button class="btn-cancel" id="btn-score-cancel" type="button">Klar / Stäng</button>
@@ -283,6 +304,43 @@
   </div>
 </div>
 
+<!-- TEMPLATE PREVIEW MODAL -->
+<div class="modal-backdrop" id="templatePreviewBackdrop">
+  <div class="modal-box" style="text-align:left;">
+    <h3>Mallförhandsvisning</h3>
+    <div id="template-preview-content"></div>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btn-template-preview-add" type="button">➕ Lägg till som station</button>
+      <button class="btn-cancel" id="btn-template-preview-close" type="button">Stäng</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOW TO USE MODAL -->
+<div class="modal-backdrop" id="howtoModalBackdrop">
+  <div class="modal-box" style="text-align:left;">
+    <h3>Så använder du appen</h3>
+    <h4>Som skytt</h4>
+    <ul>
+      <li>Öppna länken till appen som du fått av skjutledaren.</li>
+      <li>Gå till fliken "Mata in". Om ditt namn inte redan syns som ett snabbval under fältet Skytt, skriv in det och tryck på "➕ Lägg till skytt (ingen PIN)" — du behöver ingen kod för att registrera dig själv.</li>
+      <li>Följ resultaten live under fliken "Topplista". Välj din senaste station i listan, eller välj "Total" för att se den samlade ställningen för hela tävlingen.</li>
+      <li>Poäng, tid, straff och bonus fylls i av skjutledaren efter din omgång — det kräver en PIN-kod som bara skjutledarna har.</li>
+    </ul>
+    <h4>Som skjutledare</h4>
+    <ul>
+      <li>Innan tävlingen: gå in på "Inställningar" (kräver PIN-kod) och lägg upp stationerna — namn, avstånd, målsystem/antal mål/skott, startposition, ev. bonus och beskrivning. Du kan även spara en station som mall för att snabbt återanvända den vid nästa tävling.</li>
+      <li>Under "Mata in": välj rätt station, välj skytten (eller skriv namnet), ange PIN-koden, registrera träffarna med Poäng-knapparna (du kan blanda flera måltyper i samma omgång), lägg till ev. straff/bonus med knapparna, och ange tiden. Tryck sist på "Spara &amp; Beräkna".</li>
+      <li>Om skytten redan har ett resultat på stationen får du en fråga om du vill skriva över det — säg bara ja om det verkligen ska ändras.</li>
+      <li>Under "Topplista" kan du ändra eller radera ett redan sparat resultat (kräver PIN), samt nollställa en hel station inför en ny omgång.</li>
+      <li>Efter tävlingen: exportera resultatet som CSV (öppnas direkt i Excel) eller skriv ut/spara som PDF — båda finns under fliken Topplista och tar med samtliga stationer plus totalställningen.</li>
+    </ul>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btn-close-howto" type="button">Stäng</button>
+    </div>
+  </div>
+</div>
+
 <!-- SKJUTLEDARE LATMASK MODAL -->
 <div class="modal-backdrop" id="latmaskModalBackdrop">
   <div class="modal-box" style="text-align:left;">
@@ -331,7 +389,7 @@
 <!-- SKOTTSKADA MODAL -->
 <div class="modal-backdrop" id="skottskadaModalBackdrop">
   <div class="modal-box" style="text-align:left;">
-    <h3>🚨 AKUT OMHÄNDERTAGANDE<br>SKOTTSKADA / VÅDASKOTT</h3>
+    <h3>➕ AKUT OMHÄNDERTAGANDE<br>SKOTTSKADA / VÅDASKOTT</h3>
 
     <h4>L – LIVSFARLIGT LÄGE</h4>
     <p><em>Kontrollera → Åtgärda</em></p>
@@ -430,7 +488,7 @@
   var currentPin = "1234";
   // Ändra raden nedan till en hemlig kod bara DU känner till.
   // Den krävs (utöver PIN-koden) för att kunna byta PIN-koden.
-  var OWNER_CODE = "byt-mig-agarkod";
+  var OWNER_CODE = "moon";
 
   var firebaseConfig = {
     apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
@@ -486,27 +544,44 @@
   }
 
   // ---------------------------------------------------------------
-  // PIN-kod (delad i molnet)
+  // Startpositioner (förval)
   // ---------------------------------------------------------------
-  if (db) {
-    db.ref("settings/pin").once("value").then(function (snap) {
-      if (snap.val() === null) {
-        db.ref("settings/pin").set(currentPin);
-      }
-    });
-    db.ref("settings/pin").on("value", function (snap) {
-      var val = snap.val();
-      if (val) currentPin = val;
-    });
+  var STARTPOSITIONS = {
+    grund: {
+      name: "Grundställning",
+      description:
+        "Gevär:\n- Gevär på bröst\n- Pipan nedåt\n- Fingret utanför varbygeln\n- Vapnet säkrat\n\n" +
+        "Pistol:\n- Pistol laddad och hölstrad\n- Armarna längs sidorna\n- Vapnet säkrat (om modellen tillåter)"
+    },
+    fardig: {
+      name: "Färdigställning",
+      description:
+        "Gevär:\n- Gevär riktat mot skjutvallen, under måltavla, ca 45 grader ner\n- Fingret utanför varbygeln\n- Vapnet osäkrat\n\n" +
+        "Pistol:\n- Pistol riktad mot skjutvallen, under måltavla ca 45 grader ner\n- Fingret utanför varbygeln\n- Vapnet osäkrat"
+    }
+  };
+
+  function getStartPositionInfo(station) {
+    if (station.startPositionType === "grund") return STARTPOSITIONS.grund;
+    if (station.startPositionType === "fardig") return STARTPOSITIONS.fardig;
+    return { name: station.startPositionName || "Egen position", description: station.startPositionDescription || "" };
   }
 
   // ---------------------------------------------------------------
-  // Poäng-system (Metric / HF2020 / Stål) med röst per zon
+  // Poäng-system (Metric / HF2020 / Stål / Precision) med röst per zon
   // ---------------------------------------------------------------
+  var numberWords = { 1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six", 7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten" };
+
+  var precisionZones = [];
+  for (var pnum = 1; pnum <= 10; pnum++) {
+    precisionZones.push({ k: String(pnum), v: pnum, voice: numberWords[pnum] });
+  }
+  precisionZones.push({ k: "MISS", v: 0, voice: "Miss", isMiss: true });
+
   var scoreSystems = {
     metric: { label: "Metric", zones: [
       { k: "A", v: 5, voice: "Alpha" },
-      { k: "B", v: 4, voice: "Bravo" },
+      { k: "B", v: 5, voice: "Bravo" },
       { k: "C", v: 3, voice: "Charlie" },
       { k: "D", v: 1, voice: "Delta" },
       { k: "MISS", v: -10, voice: "Miss", isMiss: true }
@@ -523,7 +598,8 @@
     steel: { label: "Stål", zones: [
       { k: "Träff", v: 5, voice: "Ding" },
       { k: "MISS", v: -10, voice: "Miss", isMiss: true }
-    ] }
+    ] },
+    precision: { label: "Precision", zones: precisionZones }
   };
 
   function maxHitValue(systemKey) {
@@ -533,8 +609,10 @@
     return positive.length ? Math.max.apply(null, positive) : 0;
   }
 
-  function stationMaxPoints(station) {
-    return (station.minShots || 0) * maxHitValue(station.targetSystem);
+  function getStationSteelValue(station) {
+    if (!station || !station.targetTypes) return 5;
+    var row = station.targetTypes.filter(function (t) { return t.system === "steel"; })[0];
+    return row ? (row.steelValue || 5) : 5;
   }
 
   // ---------------------------------------------------------------
@@ -546,17 +624,33 @@
     return {
       id: id,
       name: name,
-      minShots: 9,
-      targetSystem: "metric",
+      targetTypes: [{ system: "metric", targetCount: 1, shotsPerTarget: 1, steelValue: 5 }],
       hasBonus: false,
+      bonusValue: 10,
       weapon: "Båda",
-      countMetric: 0,
-      countHf2020: 0,
-      countSteel: 0,
+      distance: "",
       countNoShoot: 0,
       description: "",
-      imageUrl: ""
+      imageUrl: "",
+      startPositionType: "grund",
+      startPositionName: "",
+      startPositionDescription: ""
     };
+  }
+
+  function stationTotalShots(station) {
+    return (station.targetTypes || []).reduce(function (sum, t) {
+      return sum + (t.targetCount || 0) * (t.shotsPerTarget || 0);
+    }, 0);
+  }
+
+  function stationMaxPoints(station) {
+    var pts = (station.targetTypes || []).reduce(function (sum, t) {
+      var val = t.system === "steel" ? (t.steelValue || 5) : maxHitValue(t.system);
+      return sum + (t.targetCount || 0) * (t.shotsPerTarget || 0) * val;
+    }, 0);
+    if (station.hasBonus) pts += (station.bonusValue || 10);
+    return pts;
   }
 
   function normalizeStationsArray(raw) {
@@ -578,6 +672,17 @@
           base[key] = item[key];
         }
       }
+      // Migrering från äldre versioner utan targetTypes
+      if (!base.targetTypes || !base.targetTypes.length) {
+        var oldSystem = item.targetSystem || "metric";
+        var oldMin = item.minShots || 1;
+        base.targetTypes = [{ system: oldSystem, targetCount: 1, shotsPerTarget: oldMin, steelValue: 5 }];
+      }
+      if (base.bonusValue === undefined) base.bonusValue = 10;
+      if (base.distance === undefined) base.distance = "";
+      if (base.startPositionType === undefined) base.startPositionType = "grund";
+      if (base.startPositionName === undefined) base.startPositionName = "";
+      if (base.startPositionDescription === undefined) base.startPositionDescription = "";
       return base;
     });
   }
@@ -656,23 +761,36 @@
     var maxPts = stationMaxPoints(station);
     var totalMax = stationsList.reduce(function (sum, s) { return sum + stationMaxPoints(s); }, 0);
     var pct = totalMax > 0 ? ((maxPts / totalMax) * 100).toFixed(1) : "0.0";
-    var totalTargets = (station.countMetric || 0) + (station.countHf2020 || 0) + (station.countSteel || 0);
+    var totalShots = stationTotalShots(station);
+    var startPos = getStartPositionInfo(station);
+
+    var typeLines = (station.targetTypes || []).map(function (t) {
+      var label = scoreSystems[t.system] ? scoreSystems[t.system].label : t.system;
+      var valTxt = t.system === "steel" ? " (" + (t.steelValue || 5) + "p/träff)" : "";
+      return label + valTxt + ": " + (t.targetCount || 0) + " mål × " + (t.shotsPerTarget || 0) + " skott";
+    }).join(" | ");
 
     var html = "";
     if (station.description) {
       html += "<p><strong>" + escapeHtml(station.name) + ":</strong> " + escapeHtml(station.description) + "</p>";
     }
-    html += "<p>Minsta antal skott: <strong>" + station.minShots + "</strong> | Max poäng: <strong>" + maxPts + "</strong> (" + pct + "% av matchen)</p>";
-    html += "<p>Mål: Metric " + (station.countMetric || 0) + " st, HF2020 " + (station.countHf2020 || 0) + " st, Stål " + (station.countSteel || 0) + " st (totalt " + totalTargets + " st)";
-    if (station.countNoShoot) html += " + " + station.countNoShoot + " No-shoot (skjuts EJ)";
-    html += "</p>";
+    if (station.distance) html += "<p>Avstånd: <strong>" + escapeHtml(station.distance) + "</strong></p>";
+    html += "<p>Totalt antal skott: <strong>" + totalShots + "</strong> | Max poäng: <strong>" + maxPts + "</strong> (" + pct + "% av matchen)</p>";
+    html += "<p>Måltyper: " + (typeLines || "-") + "</p>";
+    if (station.countNoShoot) html += "<p>No-shoot: " + station.countNoShoot + " st (skjuts EJ)</p>";
+    if (station.hasBonus) html += "<p>Bonusuppgift: " + (station.bonusValue || 10) + " p</p>";
     html += "<p>Vapen: " + escapeHtml(station.weapon || "-") + "</p>";
+    html += "<p>Startposition: <strong>" + escapeHtml(startPos.name) + "</strong></p>";
     if (station.imageUrl) {
       html += "<img src='" + escapeHtml(station.imageUrl) + "' alt='Stationsbild'>";
     }
     panel.innerHTML = html;
 
-    if (bonusBtn) bonusBtn.disabled = !station.hasBonus;
+    if (bonusBtn) {
+      bonusBtn.disabled = !station.hasBonus;
+      bonusBtn.textContent = "+" + (station.bonusValue || 10);
+      bonusCounter.setStep(station.bonusValue || 10);
+    }
   }
 
   stageSelect.addEventListener("change", renderStationInfoPanel);
@@ -705,32 +823,11 @@
       nameInput.value = station.name;
       addField("Namn", nameInput);
 
-      var minShotsInput = document.createElement("input");
-      minShotsInput.type = "number";
-      minShotsInput.min = "1";
-      minShotsInput.value = station.minShots;
-      addField("Minsta antal skott (max för poängregistrering)", minShotsInput);
-
-      var targetSystemSelect = document.createElement("select");
-      ["metric", "hf2020", "steel"].forEach(function (sysKey) {
-        var opt = document.createElement("option");
-        opt.value = sysKey;
-        opt.textContent = scoreSystems[sysKey].label;
-        if (station.targetSystem === sysKey) opt.selected = true;
-        targetSystemSelect.appendChild(opt);
-      });
-      addField("Målsystem (för max poäng-beräkning)", targetSystemSelect);
-
-      var bonusRow = document.createElement("div");
-      bonusRow.className = "checkbox-row";
-      var bonusCheckbox = document.createElement("input");
-      bonusCheckbox.type = "checkbox";
-      bonusCheckbox.checked = !!station.hasBonus;
-      var bonusLabel = document.createElement("span");
-      bonusLabel.textContent = "Bonusuppgift finns på stationen";
-      bonusRow.appendChild(bonusCheckbox);
-      bonusRow.appendChild(bonusLabel);
-      card.appendChild(bonusRow);
+      var distanceInput = document.createElement("input");
+      distanceInput.type = "text";
+      distanceInput.placeholder = "T.ex. 25 m";
+      distanceInput.value = station.distance || "";
+      addField("Avstånd", distanceInput);
 
       var weaponSelect = document.createElement("select");
       ["Gevär", "Pistol", "Båda"].forEach(function (w) {
@@ -742,40 +839,259 @@
       });
       addField("Vapen", weaponSelect);
 
-      var countMetricInput = document.createElement("input");
-      countMetricInput.type = "number";
-      countMetricInput.min = "0";
-      countMetricInput.value = station.countMetric || 0;
-      addField("Antal Metric-mål", countMetricInput);
+      // --- Startposition ---
+      var startTypeSelect = document.createElement("select");
+      [["grund", "Grundställning"], ["fardig", "Färdigställning"], ["egen", "Egen position"]].forEach(function (p) {
+        var opt = document.createElement("option");
+        opt.value = p[0];
+        opt.textContent = p[1];
+        if (station.startPositionType === p[0]) opt.selected = true;
+        startTypeSelect.appendChild(opt);
+      });
+      addField("Startposition", startTypeSelect);
 
-      var countHf2020Input = document.createElement("input");
-      countHf2020Input.type = "number";
-      countHf2020Input.min = "0";
-      countHf2020Input.value = station.countHf2020 || 0;
-      addField("Antal HF2020-mål", countHf2020Input);
+      var startPreview = document.createElement("div");
+      startPreview.className = "preset-preview";
 
-      var countSteelInput = document.createElement("input");
-      countSteelInput.type = "number";
-      countSteelInput.min = "0";
-      countSteelInput.value = station.countSteel || 0;
-      addField("Antal Stål-mål", countSteelInput);
+      var customNameInput = document.createElement("input");
+      customNameInput.type = "text";
+      customNameInput.placeholder = "Namn på egen startposition";
+      customNameInput.value = station.startPositionName || "";
+      customNameInput.style.marginTop = "6px";
+
+      var customDescInput = document.createElement("textarea");
+      customDescInput.rows = 3;
+      customDescInput.placeholder = "Beskrivning av egen startposition";
+      customDescInput.value = station.startPositionDescription || "";
+      customDescInput.style.marginTop = "6px";
+
+      function updateStartPosView() {
+        var val = startTypeSelect.value;
+        if (val === "egen") {
+          startPreview.style.display = "none";
+          customNameInput.style.display = "block";
+          customDescInput.style.display = "block";
+        } else {
+          customNameInput.style.display = "none";
+          customDescInput.style.display = "none";
+          startPreview.style.display = "block";
+          startPreview.textContent = STARTPOSITIONS[val].description;
+        }
+      }
+      startTypeSelect.addEventListener("change", updateStartPosView);
+
+      card.appendChild(startPreview);
+      card.appendChild(customNameInput);
+      card.appendChild(customDescInput);
+      updateStartPosView();
+
+      // --- Måltyper (repeterbara rader) ---
+      var typesLabel = document.createElement("span");
+      typesLabel.className = "field-label";
+      typesLabel.textContent = "Måltyper på stationen";
+      card.appendChild(typesLabel);
+
+      var rowsContainer = document.createElement("div");
+      card.appendChild(rowsContainer);
+
+      var stationRows = (station.targetTypes && station.targetTypes.length)
+        ? station.targetTypes.map(function (r) {
+            return { system: r.system, targetCount: r.targetCount, shotsPerTarget: r.shotsPerTarget, steelValue: r.steelValue || 5 };
+          })
+        : [{ system: "metric", targetCount: 1, shotsPerTarget: 1, steelValue: 5 }];
+
+      var computedBox = document.createElement("div");
+      computedBox.className = "computed-box";
+
+      function updateComputed() {
+        var tmpStation = { targetTypes: stationRows, hasBonus: bonusCheckbox.checked, bonusValue: parseInt(bonusValueInput.value, 10) || 10 };
+        var shots = stationRows.reduce(function (sum, t) { return sum + (t.targetCount || 0) * (t.shotsPerTarget || 0); }, 0);
+        var pts = stationMaxPoints(tmpStation);
+        computedBox.textContent = "Totalt antal skott: " + shots + " | Max poäng: " + pts;
+      }
+
+      function renderRows() {
+        rowsContainer.innerHTML = "";
+        stationRows.forEach(function (row, ridx) {
+          var rowDiv = document.createElement("div");
+          rowDiv.className = "settings-row";
+
+          var sysSelect = document.createElement("select");
+          ["metric", "hf2020", "steel", "precision"].forEach(function (sk) {
+            var opt = document.createElement("option");
+            opt.value = sk;
+            opt.textContent = scoreSystems[sk].label;
+            if (row.system === sk) opt.selected = true;
+            sysSelect.appendChild(opt);
+          });
+          sysSelect.addEventListener("change", function () { row.system = sysSelect.value; renderRows(); updateComputed(); });
+
+          var countInput = document.createElement("input");
+          countInput.type = "number"; countInput.min = "0";
+          countInput.value = row.targetCount || 0;
+          countInput.placeholder = "Antal mål";
+          countInput.addEventListener("input", function () { row.targetCount = parseInt(countInput.value, 10) || 0; updateComputed(); });
+
+          var shotsInput = document.createElement("input");
+          shotsInput.type = "number"; shotsInput.min = "0";
+          shotsInput.value = row.shotsPerTarget || 0;
+          shotsInput.placeholder = "Skott/mål";
+          shotsInput.addEventListener("input", function () { row.shotsPerTarget = parseInt(shotsInput.value, 10) || 0; updateComputed(); });
+
+          rowDiv.appendChild(sysSelect);
+          rowDiv.appendChild(countInput);
+          rowDiv.appendChild(shotsInput);
+
+          if (row.system === "steel") {
+            var steelSelect = document.createElement("select");
+            [5, 10, 15, 20].forEach(function (v) {
+              var opt = document.createElement("option");
+              opt.value = v;
+              opt.textContent = v + " p";
+              if ((row.steelValue || 5) === v) opt.selected = true;
+              steelSelect.appendChild(opt);
+            });
+            steelSelect.addEventListener("change", function () { row.steelValue = parseInt(steelSelect.value, 10); updateComputed(); });
+            rowDiv.appendChild(steelSelect);
+          }
+
+          var removeRowBtn = document.createElement("button");
+          removeRowBtn.type = "button";
+          removeRowBtn.className = "small-btn";
+          removeRowBtn.style.marginLeft = "0";
+          removeRowBtn.style.marginTop = "0";
+          removeRowBtn.textContent = "🗑️";
+          removeRowBtn.addEventListener("click", function () {
+            stationRows.splice(ridx, 1);
+            renderRows();
+            updateComputed();
+          });
+          rowDiv.appendChild(removeRowBtn);
+
+          rowsContainer.appendChild(rowDiv);
+        });
+      }
+      renderRows();
+
+      var addRowBtn = document.createElement("button");
+      addRowBtn.type = "button";
+      addRowBtn.className = "small-btn";
+      addRowBtn.style.marginLeft = "0";
+      addRowBtn.textContent = "➕ Lägg till måltyp";
+      addRowBtn.addEventListener("click", function () {
+        stationRows.push({ system: "metric", targetCount: 1, shotsPerTarget: 1, steelValue: 5 });
+        renderRows();
+        updateComputed();
+      });
+      card.appendChild(addRowBtn);
+
+      // --- Bonus ---
+      var bonusRow = document.createElement("div");
+      bonusRow.className = "checkbox-row";
+      var bonusCheckbox = document.createElement("input");
+      bonusCheckbox.type = "checkbox";
+      bonusCheckbox.checked = !!station.hasBonus;
+      var bonusLabel = document.createElement("span");
+      bonusLabel.textContent = "Bonusuppgift finns på stationen";
+      bonusRow.appendChild(bonusCheckbox);
+      bonusRow.appendChild(bonusLabel);
+      card.appendChild(bonusRow);
+
+      var bonusValueInput = document.createElement("input");
+      bonusValueInput.type = "number";
+      bonusValueInput.min = "0";
+      bonusValueInput.value = station.bonusValue || 10;
+      bonusValueInput.style.marginTop = "6px";
+      bonusValueInput.addEventListener("input", updateComputed);
+      addField("Bonuspoäng", bonusValueInput);
+      bonusCheckbox.addEventListener("change", updateComputed);
 
       var countNoShootInput = document.createElement("input");
       countNoShootInput.type = "number";
       countNoShootInput.min = "0";
       countNoShootInput.value = station.countNoShoot || 0;
-      addField("Antal No-shoot (skjuts EJ, räknas ej in i totalt antal)", countNoShootInput);
+      addField("Antal No-shoot (skjuts EJ)", countNoShootInput);
 
       var descriptionInput = document.createElement("textarea");
       descriptionInput.rows = 3;
       descriptionInput.value = station.description || "";
       addField("Stationsbeskrivning", descriptionInput);
 
+      // --- Bild ---
       var imageUrlInput = document.createElement("input");
       imageUrlInput.type = "text";
-      imageUrlInput.placeholder = "https://... (länk till bild)";
+      imageUrlInput.placeholder = "https://... (eller ladda upp nedan)";
       imageUrlInput.value = station.imageUrl || "";
-      addField("Bild-URL", imageUrlInput);
+      addField("Bild-URL (valfritt)", imageUrlInput);
+
+      var imgFileInput = document.createElement("input");
+      imgFileInput.type = "file";
+      imgFileInput.accept = "image/*";
+      imgFileInput.style.marginTop = "6px";
+      card.appendChild(imgFileInput);
+
+      var imgPreview = document.createElement("img");
+      imgPreview.style.maxWidth = "150px";
+      imgPreview.style.display = station.imageUrl ? "block" : "none";
+      imgPreview.style.marginTop = "8px";
+      imgPreview.style.borderRadius = "8px";
+      if (station.imageUrl) imgPreview.src = station.imageUrl;
+      card.appendChild(imgPreview);
+
+      imageUrlInput.addEventListener("input", function () {
+        if (imageUrlInput.value) {
+          imgPreview.src = imageUrlInput.value;
+          imgPreview.style.display = "block";
+        } else {
+          imgPreview.style.display = "none";
+        }
+      });
+
+      imgFileInput.addEventListener("change", function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (evt) {
+          var img = new Image();
+          img.onload = function () {
+            var maxW = 800;
+            var scale = Math.min(1, maxW / img.width);
+            var canvas = document.createElement("canvas");
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            var ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            var dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+            imageUrlInput.value = dataUrl;
+            imgPreview.src = dataUrl;
+            imgPreview.style.display = "block";
+          };
+          img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      updateComputed();
+      card.appendChild(computedBox);
+
+      // --- Actions ---
+      function collectStationData() {
+        return {
+          id: station.id,
+          name: nameInput.value.trim() || station.name,
+          distance: distanceInput.value.trim(),
+          weapon: weaponSelect.value,
+          startPositionType: startTypeSelect.value,
+          startPositionName: startTypeSelect.value === "egen" ? customNameInput.value.trim() : "",
+          startPositionDescription: startTypeSelect.value === "egen" ? customDescInput.value : "",
+          targetTypes: stationRows.map(function (r) { return { system: r.system, targetCount: r.targetCount, shotsPerTarget: r.shotsPerTarget, steelValue: r.steelValue }; }),
+          hasBonus: bonusCheckbox.checked,
+          bonusValue: parseInt(bonusValueInput.value, 10) || 10,
+          countNoShoot: parseInt(countNoShootInput.value, 10) || 0,
+          description: descriptionInput.value,
+          imageUrl: imageUrlInput.value.trim()
+        };
+      }
 
       var actions = document.createElement("div");
       actions.className = "station-card-actions";
@@ -785,20 +1101,7 @@
       saveCardBtn.className = "btn-confirm";
       saveCardBtn.textContent = "💾 Spara ändringar";
       saveCardBtn.addEventListener("click", function () {
-        var updated = {
-          id: station.id,
-          name: nameInput.value.trim() || station.name,
-          minShots: parseInt(minShotsInput.value, 10) || 1,
-          targetSystem: targetSystemSelect.value,
-          hasBonus: bonusCheckbox.checked,
-          weapon: weaponSelect.value,
-          countMetric: parseInt(countMetricInput.value, 10) || 0,
-          countHf2020: parseInt(countHf2020Input.value, 10) || 0,
-          countSteel: parseInt(countSteelInput.value, 10) || 0,
-          countNoShoot: parseInt(countNoShootInput.value, 10) || 0,
-          description: descriptionInput.value,
-          imageUrl: imageUrlInput.value.trim()
-        };
+        var updated = collectStationData();
         var newList = stationsList.map(function (s) { return s.id === station.id ? updated : s; });
         db.ref("settings/stations").set(newList).then(function () {
           alert("Station uppdaterad!");
@@ -812,26 +1115,36 @@
       templateBtn.addEventListener("click", function () {
         var templateName = prompt("Namn för mallen:", nameInput.value);
         if (!templateName) return;
-        var tmpl = {
-          templateName: templateName,
-          name: nameInput.value.trim() || station.name,
-          minShots: parseInt(minShotsInput.value, 10) || 1,
-          targetSystem: targetSystemSelect.value,
-          hasBonus: bonusCheckbox.checked,
-          weapon: weaponSelect.value,
-          countMetric: parseInt(countMetricInput.value, 10) || 0,
-          countHf2020: parseInt(countHf2020Input.value, 10) || 0,
-          countSteel: parseInt(countSteelInput.value, 10) || 0,
-          countNoShoot: parseInt(countNoShootInput.value, 10) || 0,
-          description: descriptionInput.value,
-          imageUrl: imageUrlInput.value.trim()
-        };
+        var data = collectStationData();
+        delete data.id;
+        data.templateName = templateName;
         db.ref("settings/stationTemplates").once("value").then(function (snap) {
           var list = snap.val() || [];
-          list.push(tmpl);
+          list.push(data);
           db.ref("settings/stationTemplates").set(list).then(function () {
             alert("Mall sparad!");
           });
+        });
+      });
+
+      var duplicateBtn = document.createElement("button");
+      duplicateBtn.type = "button";
+      duplicateBtn.className = "btn-neutral";
+      duplicateBtn.textContent = "🔁 Duplicera som Serie";
+      duplicateBtn.addEventListener("click", function () {
+        var data = collectStationData();
+        var baseName = data.name.replace(/ - Serie \d+$/, "");
+        var maxSerie = 1;
+        stationsList.forEach(function (s) {
+          if (s.name === baseName) maxSerie = Math.max(maxSerie, 1);
+          var m = s.name.match(new RegExp("^" + baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + " - Serie (\\d+)$"));
+          if (m) maxSerie = Math.max(maxSerie, parseInt(m[1], 10));
+        });
+        data.name = baseName + " - Serie " + (maxSerie + 1);
+        data.id = "s_" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
+        var newList = stationsList.concat([data]);
+        db.ref("settings/stations").set(newList).then(function () {
+          alert("Stationen duplicerad som '" + data.name + "'!");
         });
       });
 
@@ -854,6 +1167,7 @@
 
       actions.appendChild(saveCardBtn);
       actions.appendChild(templateBtn);
+      actions.appendChild(duplicateBtn);
       card.appendChild(actions);
       card.appendChild(deleteBtn);
 
@@ -877,6 +1191,44 @@
     });
   }
 
+  function templatePreviewHtml(tmpl) {
+    var fakeStation = { targetTypes: tmpl.targetTypes, hasBonus: tmpl.hasBonus, bonusValue: tmpl.bonusValue };
+    var shots = (tmpl.targetTypes || []).reduce(function (s, t) { return s + (t.targetCount || 0) * (t.shotsPerTarget || 0); }, 0);
+    var maxPts = stationMaxPoints(fakeStation);
+    var typeLines = (tmpl.targetTypes || []).map(function (t) {
+      var label = scoreSystems[t.system] ? scoreSystems[t.system].label : t.system;
+      var valTxt = t.system === "steel" ? " (" + (t.steelValue || 5) + "p/träff)" : "";
+      return label + valTxt + ": " + (t.targetCount || 0) + " mål × " + (t.shotsPerTarget || 0) + " skott";
+    }).join("<br>");
+    var startPos = tmpl.startPositionType === "egen"
+      ? { name: tmpl.startPositionName, description: tmpl.startPositionDescription }
+      : STARTPOSITIONS[tmpl.startPositionType] || STARTPOSITIONS.grund;
+
+    var html = "<p><strong>Namn:</strong> " + escapeHtml(tmpl.name) + "</p>";
+    if (tmpl.distance) html += "<p><strong>Avstånd:</strong> " + escapeHtml(tmpl.distance) + "</p>";
+    html += "<p><strong>Vapen:</strong> " + escapeHtml(tmpl.weapon || "-") + "</p>";
+    html += "<p><strong>Måltyper:</strong><br>" + (typeLines || "-") + "</p>";
+    html += "<p><strong>Totalt antal skott:</strong> " + shots + " | <strong>Max poäng:</strong> " + maxPts + "</p>";
+    if (tmpl.hasBonus) html += "<p><strong>Bonus:</strong> " + (tmpl.bonusValue || 10) + " p</p>";
+    if (tmpl.countNoShoot) html += "<p><strong>No-shoot:</strong> " + tmpl.countNoShoot + " st</p>";
+    html += "<p><strong>Startposition:</strong> " + escapeHtml(startPos.name || "-") + "</p>";
+    if (tmpl.description) html += "<p><strong>Beskrivning:</strong> " + escapeHtml(tmpl.description) + "</p>";
+    if (tmpl.imageUrl) html += "<img src='" + escapeHtml(tmpl.imageUrl) + "' style='max-width:100%;border-radius:8px;margin-top:8px;'>";
+    return html;
+  }
+
+  var templatePreviewBackdrop = document.getElementById("templatePreviewBackdrop");
+  var templatePreviewContent = document.getElementById("template-preview-content");
+  var currentPreviewTemplate = null;
+
+  document.getElementById("btn-template-preview-close").addEventListener("click", function () {
+    templatePreviewBackdrop.classList.remove("open");
+  });
+  document.getElementById("btn-template-preview-add").addEventListener("click", function () {
+    if (currentPreviewTemplate) addStationFromTemplate(currentPreviewTemplate);
+    templatePreviewBackdrop.classList.remove("open");
+  });
+
   function renderTemplates(list) {
     var container = document.getElementById("template-list");
     container.innerHTML = "";
@@ -895,10 +1247,22 @@
       span.style.flex = "1";
       span.textContent = tmpl.templateName;
 
+      var viewBtn = document.createElement("button");
+      viewBtn.type = "button";
+      viewBtn.className = "small-btn";
+      viewBtn.style.marginLeft = "0";
+      viewBtn.style.marginTop = "0";
+      viewBtn.textContent = "👁️ Visa";
+      viewBtn.addEventListener("click", function () {
+        currentPreviewTemplate = tmpl;
+        templatePreviewContent.innerHTML = templatePreviewHtml(tmpl);
+        templatePreviewBackdrop.classList.add("open");
+      });
+
       var addBtn = document.createElement("button");
       addBtn.type = "button";
       addBtn.className = "small-btn";
-      addBtn.style.marginLeft = "0";
+      addBtn.style.marginLeft = "6px";
       addBtn.style.marginTop = "0";
       addBtn.textContent = "➕ Lägg till";
       addBtn.addEventListener("click", function () {
@@ -920,6 +1284,7 @@
       });
 
       row.appendChild(span);
+      row.appendChild(viewBtn);
       row.appendChild(addBtn);
       row.appendChild(delBtn);
       container.appendChild(row);
@@ -931,13 +1296,14 @@
     var newStation = {
       id: newId,
       name: tmpl.name,
-      minShots: tmpl.minShots,
-      targetSystem: tmpl.targetSystem,
-      hasBonus: tmpl.hasBonus,
+      distance: tmpl.distance,
       weapon: tmpl.weapon,
-      countMetric: tmpl.countMetric,
-      countHf2020: tmpl.countHf2020,
-      countSteel: tmpl.countSteel,
+      startPositionType: tmpl.startPositionType,
+      startPositionName: tmpl.startPositionName,
+      startPositionDescription: tmpl.startPositionDescription,
+      targetTypes: tmpl.targetTypes,
+      hasBonus: tmpl.hasBonus,
+      bonusValue: tmpl.bonusValue,
       countNoShoot: tmpl.countNoShoot,
       description: tmpl.description,
       imageUrl: tmpl.imageUrl
@@ -951,6 +1317,16 @@
   // ---------------------------------------------------------------
   // Byt PIN-kod (kräver ägarkod + nuvarande PIN)
   // ---------------------------------------------------------------
+  if (db) {
+    db.ref("settings/pin").once("value").then(function (snap) {
+      if (snap.val() === null) db.ref("settings/pin").set(currentPin);
+    });
+    db.ref("settings/pin").on("value", function (snap) {
+      var val = snap.val();
+      if (val) currentPin = val;
+    });
+  }
+
   document.getElementById("btn-change-pin").addEventListener("click", function () {
     var ownerVal = prompt("Ange ägarkoden för att kunna byta PIN-kod:");
     if (ownerVal === null) return;
@@ -970,6 +1346,26 @@
       document.getElementById("pin_new").value = "";
       document.getElementById("pin_confirm").value = "";
     });
+  });
+
+  // ---------------------------------------------------------------
+  // Plats / Skjutledare (matchinfo, delat i molnet)
+  // ---------------------------------------------------------------
+  var locationInput = document.getElementById("match_location");
+  var officerInput = document.getElementById("match_officer");
+
+  if (db) {
+    db.ref("settings/matchInfo").on("value", function (snap) {
+      var info = snap.val() || {};
+      if (document.activeElement !== locationInput) locationInput.value = info.location || "";
+      if (document.activeElement !== officerInput) officerInput.value = info.officer || "";
+    });
+  }
+  locationInput.addEventListener("change", function () {
+    db.ref("settings/matchInfo/location").set(locationInput.value);
+  });
+  officerInput.addEventListener("change", function () {
+    db.ref("settings/matchInfo/officer").set(officerInput.value);
   });
 
   // ---------------------------------------------------------------
@@ -1041,19 +1437,20 @@
   // ---------------------------------------------------------------
   // Straff / Bonus - räkneknappar
   // ---------------------------------------------------------------
-  function setupCounter(displayId, hiddenId, addBtnId, undoBtnId, prefixText) {
+  function setupCounter(displayId, hiddenId, addBtnId, undoBtnId, prefixText, defaultStep) {
     var taps = [];
+    var currentStep = defaultStep;
     var displayEl = document.getElementById(displayId);
     var hiddenEl = document.getElementById(hiddenId);
 
     function update() {
-      var total = taps.length * 10;
+      var total = taps.reduce(function (s, v) { return s + v; }, 0);
       hiddenEl.value = total;
       displayEl.textContent = prefixText + ": " + total;
     }
 
     document.getElementById(addBtnId).addEventListener("click", function () {
-      taps.push(10);
+      taps.push(currentStep);
       update();
     });
     document.getElementById(undoBtnId).addEventListener("click", function () {
@@ -1064,14 +1461,17 @@
 
     update();
 
-    return { reset: function () { taps = []; update(); } };
+    return {
+      reset: function () { taps = []; update(); },
+      setStep: function (s) { currentStep = s; }
+    };
   }
 
-  var penaltyCounter = setupCounter("penalty_display", "penalty_pts", "btn-penalty-add", "btn-penalty-undo", "Straff");
-  var bonusCounter = setupCounter("bonus_display", "bonus_pts", "btn-bonus-add", "btn-bonus-undo", "Bonus");
+  var penaltyCounter = setupCounter("penalty_display", "penalty_pts", "btn-penalty-add", "btn-penalty-undo", "Straff", 10);
+  var bonusCounter = setupCounter("bonus_display", "bonus_pts", "btn-bonus-add", "btn-bonus-undo", "Bonus", 10);
 
   // ---------------------------------------------------------------
-  // Poäng-knappar (Metric / HF2020 / Stål) - blandbara, med röst, MISS och skottgräns
+  // Poäng-knappar (Metric / HF2020 / Stål / Precision)
   // ---------------------------------------------------------------
   var scoreModalBackdrop = document.getElementById("scoreModalBackdrop");
   var stepSystem = document.getElementById("score-step-system");
@@ -1091,7 +1491,7 @@
     currentTally = parseInt(document.getElementById("gross_pts").value, 10) || 0;
     currentHits = [];
     var station = getSelectedStation();
-    modalStationCap = station ? (station.minShots || 0) : 0;
+    modalStationCap = station ? stationTotalShots(station) : 0;
     stepSystem.style.display = "block";
     stepZones.style.display = "none";
     updateTallyDisplay();
@@ -1120,7 +1520,15 @@
       zoneGrid.innerHTML = "";
       updateTallyDisplay();
 
-      sys.zones.forEach(function (zone) {
+      var station = getSelectedStation();
+      var steelVal = getStationSteelValue(station);
+
+      sys.zones.forEach(function (zoneOrig) {
+        var zone = zoneOrig;
+        if (sysKey === "steel" && !zoneOrig.isMiss) {
+          zone = { k: zoneOrig.k, v: steelVal, voice: zoneOrig.voice };
+        }
+
         var zbtn = document.createElement("button");
         zbtn.type = "button";
         zbtn.className = zone.isMiss ? "zone-btn zone-btn-miss" : "zone-btn";
@@ -1239,8 +1647,14 @@
   });
 
   // ---------------------------------------------------------------
-  // Lathundar
+  // Lathundar / Hjälp
   // ---------------------------------------------------------------
+  document.getElementById("btn-open-howto").addEventListener("click", function () {
+    document.getElementById("howtoModalBackdrop").classList.add("open");
+  });
+  document.getElementById("btn-close-howto").addEventListener("click", function () {
+    document.getElementById("howtoModalBackdrop").classList.remove("open");
+  });
   document.getElementById("btn-open-latmask").addEventListener("click", function () {
     document.getElementById("latmaskModalBackdrop").classList.add("open");
   });
@@ -1331,6 +1745,25 @@
   saveBtn.addEventListener("click", saveScore);
 
   // ---------------------------------------------------------------
+  // Rankinghjälpare (poängbaserad: netto poäng, tid som tiebreak)
+  // ---------------------------------------------------------------
+  function rankStationShooters(data, maxPoints) {
+    var shooters = Object.keys(data).map(function (key) {
+      var obj = data[key];
+      obj._key = key;
+      return obj;
+    });
+    shooters.sort(function (a, b) {
+      if (b.net !== a.net) return b.net - a.net;
+      return a.time - b.time;
+    });
+    return shooters.map(function (s) {
+      var pct = maxPoints > 0 ? ((s.net / maxPoints) * 100) : 0;
+      return { data: s, pct: pct };
+    });
+  }
+
+  // ---------------------------------------------------------------
   // Topplista (per station + Total)
   // ---------------------------------------------------------------
   var currentListenerRef = null;
@@ -1371,20 +1804,12 @@
       return;
     }
 
-    var shooters = Object.keys(data).map(function (key) {
-      var obj = data[key];
-      obj._key = key;
-      return obj;
-    });
-    shooters.sort(function (a, b) { return b.hf - a.hf; });
+    var station = stationsList.filter(function (s) { return s.id === stageId; })[0];
+    var maxPts = station ? stationMaxPoints(station) : 0;
+    var ranked = rankStationShooters(data, maxPts);
 
-    var maxHF = shooters[0].hf;
-    var maxStagePoints = 100;
-
-    shooters.forEach(function (s, index) {
-      var stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
-      var percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
-
+    ranked.forEach(function (item, index) {
+      var s = item.data;
       var card = document.createElement("div");
       card.className = "card";
       card.innerHTML =
@@ -1393,7 +1818,7 @@
           '<span class="hf-badge">HF: ' + s.hf.toFixed(4) + '</span>' +
           '<strong>' + escapeHtml(s.name) + '</strong>' +
           '<div class="meta-text">Poäng: ' + s.net + ' (' + s.gross + ' - ' + s.penalty + ' straff + ' + (s.bonus || 0) + ' bonus) | Tid: ' + s.time + 's</div>' +
-          '<div class="meta-text" style="color:var(--secondary);font-weight:bold;">Stationspoäng: ' + stagePoints + ' (' + percentage + '%)</div>' +
+          '<div class="meta-text" style="color:var(--secondary);font-weight:bold;">Stationspoäng: ' + s.net + ' av ' + maxPts + ' (' + item.pct.toFixed(1) + '%)</div>' +
         '</div>';
 
       var editBtn = document.createElement("button");
@@ -1409,37 +1834,27 @@
     });
   }
 
+  function computeTotals(allData) {
+    var totals = {};
+    stationsList.forEach(function (station) {
+      var stationData = allData[station.id];
+      if (!stationData) return;
+      Object.keys(stationData).forEach(function (key) {
+        var s = stationData[key];
+        if (!totals[key]) totals[key] = { name: s.name, netSum: 0, timeSum: 0 };
+        totals[key].netSum += s.net;
+        totals[key].timeSum += s.time;
+      });
+    });
+    return totals;
+  }
+
   function renderTotalLeaderboard(snapshot) {
     var allData = snapshot.val() || {};
     var listDiv = document.getElementById("leaderboard-list");
     listDiv.innerHTML = "";
 
-    var totals = {};
-
-    stationsList.forEach(function (station) {
-      var stationData = allData[station.id];
-      if (!stationData) return;
-
-      var shooters = Object.keys(stationData).map(function (key) {
-        var obj = stationData[key];
-        obj._key = key;
-        return obj;
-      });
-      if (shooters.length === 0) return;
-
-      var maxHF = Math.max.apply(null, shooters.map(function (s) { return s.hf; }));
-
-      shooters.forEach(function (s) {
-        var stagePoints = maxHF > 0 ? (s.hf / maxHF) * 100 : 0;
-        if (!totals[s._key]) {
-          totals[s._key] = { name: s.name, stagePoints: 0, netSum: 0, timeSum: 0 };
-        }
-        totals[s._key].stagePoints += stagePoints;
-        totals[s._key].netSum += s.net;
-        totals[s._key].timeSum += s.time;
-      });
-    });
-
+    var totals = computeTotals(allData);
     var list = Object.keys(totals).map(function (key) { return totals[key]; });
 
     if (list.length === 0) {
@@ -1447,19 +1862,23 @@
       return;
     }
 
-    list.sort(function (a, b) { return b.stagePoints - a.stagePoints; });
-    var maxTotal = list[0].stagePoints;
+    var grandMax = stationsList.reduce(function (sum, s) { return sum + stationMaxPoints(s); }, 0);
+
+    list.sort(function (a, b) {
+      if (b.netSum !== a.netSum) return b.netSum - a.netSum;
+      return a.timeSum - b.timeSum;
+    });
 
     list.forEach(function (s, index) {
-      var pct = maxTotal > 0 ? ((s.stagePoints / maxTotal) * 100).toFixed(2) : "0.00";
+      var pct = grandMax > 0 ? ((s.netSum / grandMax) * 100).toFixed(1) : "0.0";
       var card = document.createElement("div");
       card.className = "card";
       card.innerHTML =
         '<div class="rank-badge">#' + (index + 1) + '</div>' +
         '<div class="shooter-info">' +
           '<strong>' + escapeHtml(s.name) + '</strong>' +
-          '<div class="total-highlight">Stationspoäng totalt: ' + s.stagePoints.toFixed(4) + ' (' + pct + '%)</div>' +
-          '<div class="meta-text">Poäng totalt: ' + s.netSum + ' | Tid totalt: ' + s.timeSum.toFixed(2) + 's</div>' +
+          '<div class="total-highlight">Poäng totalt: ' + s.netSum + ' av ' + grandMax + ' (' + pct + '%)</div>' +
+          '<div class="meta-text">Tid totalt: ' + s.timeSum.toFixed(2) + 's</div>' +
         '</div>';
       listDiv.appendChild(card);
     });
@@ -1550,20 +1969,37 @@
   });
 
   // ---------------------------------------------------------------
-  // Export: CSV och Utskrift/PDF
+  // Export: CSV (alla stationer + Total) och Utskrift/PDF (alla flikar)
   // ---------------------------------------------------------------
   document.getElementById("btn-export-csv").addEventListener("click", function () {
     db.ref("matches/match1").once("value").then(function (snapshot) {
       var allData = snapshot.val() || {};
-      var rows = [["Station", "Skytt", "Poäng", "Straff", "Bonus", "Netto", "Tid", "HitFactor"]];
+      var rows = [["Station", "Skytt", "Poäng", "Straff", "Bonus", "Netto", "Tid", "MaxPoäng", "Procent"]];
 
       stationsList.forEach(function (station) {
         var stationData = allData[station.id];
         if (!stationData) return;
-        Object.keys(stationData).forEach(function (key) {
-          var s = stationData[key];
-          rows.push([station.name, s.name, s.gross, s.penalty, s.bonus || 0, s.net, s.time, s.hf]);
+        var maxPts = stationMaxPoints(station);
+        var ranked = rankStationShooters(stationData, maxPts);
+        ranked.forEach(function (item) {
+          var s = item.data;
+          rows.push([station.name, s.name, s.gross, s.penalty, s.bonus || 0, s.net, s.time, maxPts, item.pct.toFixed(1)]);
         });
+      });
+
+      var totals = computeTotals(allData);
+      var grandMax = stationsList.reduce(function (sum, s) { return sum + stationMaxPoints(s); }, 0);
+      var totalList = Object.keys(totals).map(function (k) { return totals[k]; });
+      totalList.sort(function (a, b) {
+        if (b.netSum !== a.netSum) return b.netSum - a.netSum;
+        return a.timeSum - b.timeSum;
+      });
+
+      rows.push([]);
+      rows.push(["TOTAL", "Skytt", "", "", "", "Netto", "Tid", "MaxPoäng", "Procent"]);
+      totalList.forEach(function (t) {
+        var pct = grandMax > 0 ? ((t.netSum / grandMax) * 100).toFixed(1) : "0.0";
+        rows.push(["TOTAL", t.name, "", "", "", t.netSum, t.timeSum.toFixed(2), grandMax, pct]);
       });
 
       var csv = rows.map(function (r) {
@@ -1586,7 +2022,71 @@
   });
 
   document.getElementById("btn-print").addEventListener("click", function () {
-    window.print();
+    var reads = stationsList.map(function (station) {
+      return db.ref("matches/match1/" + station.id).once("value").then(function (snap) {
+        return { station: station, data: snap.val() };
+      });
+    });
+
+    Promise.all(reads).then(function (results) {
+      var container = document.getElementById("print-view");
+      container.innerHTML = "";
+
+      var title = document.createElement("h1");
+      title.textContent = "Poängräkning – Resultat";
+      container.appendChild(title);
+
+      var infoP = document.createElement("p");
+      infoP.textContent = "Plats: " + (locationInput.value || "-") + " | Skjutledare: " + (officerInput.value || "-");
+      container.appendChild(infoP);
+
+      var allData = {};
+      results.forEach(function (r) {
+        allData[r.station.id] = r.data;
+
+        var section = document.createElement("div");
+        var h2 = document.createElement("h2");
+        h2.textContent = r.station.name;
+        section.appendChild(h2);
+
+        if (!r.data) {
+          var p = document.createElement("p");
+          p.textContent = "Inga resultat.";
+          section.appendChild(p);
+        } else {
+          var maxPts = stationMaxPoints(r.station);
+          var ranked = rankStationShooters(r.data, maxPts);
+          ranked.forEach(function (item, idx) {
+            var line = document.createElement("p");
+            line.textContent = (idx + 1) + ". " + item.data.name + " — " + item.data.net + "p av " + maxPts + " (" + item.pct.toFixed(1) + "%) — " + item.data.time + "s";
+            section.appendChild(line);
+          });
+        }
+        container.appendChild(section);
+      });
+
+      var totals = computeTotals(allData);
+      var grandMax = stationsList.reduce(function (sum, s) { return sum + stationMaxPoints(s); }, 0);
+      var totalList = Object.keys(totals).map(function (k) { return totals[k]; });
+      totalList.sort(function (a, b) {
+        if (b.netSum !== a.netSum) return b.netSum - a.netSum;
+        return a.timeSum - b.timeSum;
+      });
+
+      var totalSection = document.createElement("div");
+      var h2t = document.createElement("h2");
+      h2t.textContent = "Total";
+      totalSection.appendChild(h2t);
+      totalList.forEach(function (t, idx) {
+        var pct = grandMax > 0 ? ((t.netSum / grandMax) * 100).toFixed(1) : "0.0";
+        var line = document.createElement("p");
+        line.textContent = (idx + 1) + ". " + t.name + " — " + t.netSum + "p av " + grandMax + " (" + pct + "%) — " + t.timeSum.toFixed(2) + "s";
+        totalSection.appendChild(line);
+      });
+      container.appendChild(totalSection);
+
+      window.print();
+    });
   });
 
 })();
