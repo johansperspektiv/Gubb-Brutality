@@ -5,28 +5,52 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SRA Live Match Score</title>
 <style>
-  :root { --primary:#1E3D59; --secondary:#17B890; --bg:#F5F7FA; --dark:#111; --danger:#E53E3E; }
+  :root { --primary:#1E3D59; --secondary:#17B890; --bg:#F5F7FA; --dark:#111; --danger:#E53E3E; --gold:#B7791F; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin:0; padding:15px; color: var(--dark); }
   .container { max-width:600px; margin:0 auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
   h1,h2 { text-align:center; color:var(--primary); margin-top:0; }
-  .tab-buttons { display:flex; gap:10px; margin-bottom:20px; }
-  .tab-btn { flex:1; padding:12px; border:none; background:#E4E7EB; font-weight:bold; border-radius:6px; cursor:pointer; font-size:14px; }
+  .tab-buttons { display:flex; gap:8px; margin-bottom:20px; }
+  .tab-btn { flex:1; padding:12px 4px; border:none; background:#E4E7EB; font-weight:bold; border-radius:6px; cursor:pointer; font-size:13px; }
   .tab-btn.active { background:var(--primary); color:#fff; }
   .form-group { margin-bottom:12px; }
   label { display:block; font-weight:bold; margin-bottom:4px; font-size:14px; }
   input, select { width:100%; padding:10px; border:1px solid #CCC; border-radius:6px; box-sizing:border-box; font-size:16px; }
+  input[readonly] { background:#F0F4F8; cursor:pointer; }
+  .hint { font-size:11px; color:#64748B; margin-top:3px; }
   button.action-btn { width:100%; padding:14px; background:var(--secondary); color:#fff; border:none; font-weight:bold; font-size:16px; border-radius:6px; cursor:pointer; margin-top:10px; }
   button.action-btn:disabled { background:#B0BEC5; cursor:not-allowed; }
   .card { background:#F8FAFC; border:1px solid #E2E8F0; padding:12px; border-radius:8px; margin-bottom:10px; position:relative; }
-  .rank-badge { position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:20px; font-weight:bold; color:var(--primary); }
+  .rank-badge { position:absolute; left:10px; top:12px; font-size:20px; font-weight:bold; color:var(--primary); }
   .shooter-info { margin-left:35px; }
   .hf-badge { float:right; background:var(--primary); color:#fff; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:14px; }
   .meta-text { font-size:12px; color:#64748B; margin-top:4px; }
+  .total-highlight { font-size:16px; font-weight:bold; color:var(--gold); margin-top:6px; }
   .danger-btn { background:var(--danger); color:#fff; padding:10px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; width:100%; font-size:14px; margin-top:15px; }
+  .small-btn { background:#4A5568; color:#fff; padding:6px 10px; border:none; border-radius:5px; font-weight:bold; cursor:pointer; font-size:12px; margin-top:8px; margin-left:35px; }
   #status { text-align:center; font-size:12px; margin-top:15px; padding:8px; border-radius:6px; }
   .status-ok { background:#D1E7DD; color:#0F5132; }
   .status-bad { background:#F8D7DA; color:#842029; }
   .status-wait { background:#FFF3CD; color:#664D03; }
+  .settings-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .settings-row input { flex:1; }
+  .settings-row span { width:70px; font-size:13px; color:#64748B; }
+
+  .modal-backdrop { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; padding:15px; box-sizing:border-box; }
+  .modal-backdrop.open { display:flex; }
+  .modal-box { background:#fff; border-radius:12px; padding:20px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; }
+  .modal-box h3 { margin-top:0; text-align:center; color:var(--primary); }
+  .system-btn { width:100%; padding:14px; margin-bottom:8px; background:var(--primary); color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:15px; cursor:pointer; }
+  .zone-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:15px 0; }
+  .zone-btn { padding:18px 4px; background:var(--secondary); color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; }
+  .tally { text-align:center; font-size:22px; font-weight:bold; color:var(--primary); margin:10px 0; }
+  .tally-sub { text-align:center; font-size:12px; color:#64748B; margin-bottom:10px; }
+  .modal-actions { display:flex; gap:8px; margin-top:10px; }
+  .modal-actions button { flex:1; padding:10px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px; }
+  .btn-neutral { background:#E4E7EB; }
+  .btn-confirm { background:var(--secondary); color:#fff; }
+  .btn-cancel { background:#E4E7EB; }
+  .confirm-icon { text-align:center; font-size:40px; margin-bottom:5px; }
+  .confirm-text { text-align:center; font-size:16px; margin-bottom:15px; }
 </style>
 </head>
 <body>
@@ -35,54 +59,144 @@
   <h1>SRA Live-Poäng</h1>
 
   <div class="tab-buttons">
-    <button id="btn-input" class="tab-btn active" type="button">Mata in poäng</button>
-    <button id="btn-leaderboard" class="tab-btn" type="button">Topplista (Live)</button>
+    <button id="btn-input" class="tab-btn active" type="button">Mata in</button>
+    <button id="btn-leaderboard" class="tab-btn" type="button">Topplista</button>
+    <button id="btn-settings" class="tab-btn" type="button">Inställningar</button>
   </div>
 
+  <!-- INPUT TAB -->
   <div id="input-tab">
     <h2>Registrera resultat</h2>
     <div class="form-group">
-      <label>Station (Stage)</label>
-      <select id="stage_select">
-        <option>Station 1</option>
-        <option>Station 2</option>
-        <option>Station 3</option>
-        <option>Station 4</option>
-      </select>
+      <label>PIN-kod</label>
+      <input type="password" id="pin" placeholder="Ange PIN">
     </div>
     <div class="form-group">
-      <label>Skyttens Namn</label>
+      <label>Station</label>
+      <select id="stage_select"></select>
+    </div>
+    <div class="form-group">
+      <label>Skytt</label>
       <input type="text" id="shooter_name" placeholder="Förnamn Efternamn">
     </div>
     <div class="form-group">
-      <label>Brutto Träffpoäng (+)</label>
-      <input type="number" id="gross_pts" placeholder="T.ex. 85">
+      <label>Poäng</label>
+      <input type="number" id="gross_pts" placeholder="Tryck för att ange träffar" readonly>
+      <div class="hint">Tryck på fältet för att registrera träffar med knappar</div>
     </div>
     <div class="form-group">
-      <label>Straffpoäng (-) Miss/Procedur</label>
+      <label>Straff</label>
       <input type="number" id="penalty_pts" value="0">
     </div>
     <div class="form-group">
-      <label>Tid i sekunder</label>
-      <input type="number" step="0.01" id="time_sec" placeholder="T.ex. 14.52">
+      <label>Bonus</label>
+      <input type="number" id="bonus_pts" value="0">
+    </div>
+    <div class="form-group">
+      <label>Tid</label>
+      <input type="number" step="0.01" id="time_sec" placeholder="T.ex. 14.52 (sekunder)">
     </div>
     <button id="btn-save" class="action-btn" type="button">Spara &amp; Beräkna</button>
     <div id="status" class="status-wait">Ansluter till databasen…</div>
   </div>
 
+  <!-- LEADERBOARD TAB -->
   <div id="leaderboard-tab" style="display:none;">
-    <h2>Resultat för <span id="current_stage_title">Station 1</span></h2>
+    <h2>Resultat för <span id="current_stage_title">-</span></h2>
     <div class="form-group">
       <label>Välj Station att visa</label>
-      <select id="leaderboard_stage_select">
-        <option>Station 1</option>
-        <option>Station 2</option>
-        <option>Station 3</option>
-        <option>Station 4</option>
-      </select>
+      <select id="leaderboard_stage_select"></select>
     </div>
     <div id="leaderboard-list">Laddar live-data…</div>
     <button id="btn-clear" class="danger-btn" type="button">🗑️ Nollställ denna station</button>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="settings-tab" style="display:none;">
+    <h2>Inställningar</h2>
+    <div class="form-group">
+      <label>Antal stationer</label>
+      <div class="settings-row">
+        <input type="number" id="station_count" min="1" max="20" value="4">
+        <button id="btn-update-count" class="small-btn" style="margin-left:0;">Uppdatera</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Stationsnamn</label>
+      <div id="station-name-list"></div>
+      <button id="btn-save-names" class="action-btn" type="button">Spara stationsnamn</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCORE ENTRY MODAL -->
+<div class="modal-backdrop" id="scoreModalBackdrop">
+  <div class="modal-box">
+    <div id="score-step-system">
+      <h3>Välj poängsystem</h3>
+      <button class="system-btn" data-system="metric" type="button">Metric</button>
+      <button class="system-btn" data-system="hf2020" type="button">HF2020</button>
+      <button class="system-btn" data-system="steel" type="button">Stål</button>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btn-score-cancel" type="button">Avbryt</button>
+      </div>
+    </div>
+    <div id="score-step-zones" style="display:none;">
+      <h3 id="score-system-title">Registrera träffar</h3>
+      <div class="tally" id="score-tally">0 poäng</div>
+      <div class="tally-sub" id="score-tally-sub">0 träffar</div>
+      <div class="zone-grid" id="zone-grid"></div>
+      <div class="modal-actions">
+        <button class="btn-neutral" id="btn-score-undo" type="button">Ångra senaste</button>
+        <button class="btn-neutral" id="btn-score-reset" type="button">Nollställ</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-neutral" id="btn-score-back" type="button">Byt system</button>
+        <button class="btn-confirm" id="btn-score-done" type="button">Klar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-backdrop" id="confirmModalBackdrop">
+  <div class="modal-box">
+    <div class="confirm-icon">✅</div>
+    <div class="confirm-text" id="confirm-text">Sparat!</div>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btn-confirm-ok" type="button">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-backdrop" id="editModalBackdrop">
+  <div class="modal-box">
+    <h3>Ändra resultat</h3>
+    <div class="form-group">
+      <label id="edit-shooter-label">Skytt</label>
+    </div>
+    <div class="form-group">
+      <label>Poäng</label>
+      <input type="number" id="edit_gross">
+    </div>
+    <div class="form-group">
+      <label>Straff</label>
+      <input type="number" id="edit_penalty">
+    </div>
+    <div class="form-group">
+      <label>Bonus</label>
+      <input type="number" id="edit_bonus">
+    </div>
+    <div class="form-group">
+      <label>Tid</label>
+      <input type="number" step="0.01" id="edit_time">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btn-edit-save" type="button">Spara ändringar</button>
+      <button class="btn-cancel" id="btn-edit-cancel" type="button">Avbryt</button>
+    </div>
+    <button class="danger-btn" id="btn-edit-delete" type="button">Radera resultat</button>
   </div>
 </div>
 
@@ -93,6 +207,8 @@
 <script>
 (function () {
   "use strict";
+
+  var PIN = "1234";
 
   var firebaseConfig = {
     apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
@@ -119,31 +235,295 @@
     setStatus("Ansluten till databasen ✔", "status-ok");
   } catch (e) {
     setStatus("Kunde inte ansluta: " + e.message, "status-bad");
-    saveBtn.disabled = true;
+    if (saveBtn) saveBtn.disabled = true;
   }
 
+  // ---------------------------------------------------------------
+  // Hjälpfunktioner
+  // ---------------------------------------------------------------
+  function sanitizeKey(str) {
+    return str.trim().toLowerCase().replace(/[.#$\[\]\/]/g, "_").replace(/\s+/g, "_");
+  }
+
+  function stationId(index) {
+    return "s" + (index + 1);
+  }
+
+  function escapeHtml(str) {
+    var d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ---------------------------------------------------------------
+  // Stationer (delade inställningar i molnet)
+  // ---------------------------------------------------------------
+  var stationsList = []; // array av namn, index 0 = s1, index 1 = s2, ...
+
+  function defaultStations() {
+    return ["Station 1", "Station 2", "Station 3", "Station 4"];
+  }
+
+  if (db) {
+    db.ref("settings/stations").once("value").then(function (snap) {
+      if (snap.val() === null) {
+        db.ref("settings/stations").set(defaultStations());
+      }
+    });
+
+    db.ref("settings/stations").on("value", function (snap) {
+      var val = snap.val();
+      stationsList = (val && val.length) ? val : defaultStations();
+      renderStationSelects();
+      renderSettingsNameInputs();
+      document.getElementById("station_count").value = stationsList.length;
+    });
+  }
+
+  var stageSelect = document.getElementById("stage_select");
+  var lbSelect = document.getElementById("leaderboard_stage_select");
+
+  function renderStationSelects() {
+    var prevStage = stageSelect.value;
+    var prevLb = lbSelect.value;
+
+    stageSelect.innerHTML = "";
+    lbSelect.innerHTML = "";
+
+    stationsList.forEach(function (name, idx) {
+      var id = stationId(idx);
+
+      var opt1 = document.createElement("option");
+      opt1.value = id;
+      opt1.textContent = name;
+      stageSelect.appendChild(opt1);
+
+      var opt2 = document.createElement("option");
+      opt2.value = id;
+      opt2.textContent = name;
+      lbSelect.appendChild(opt2);
+    });
+
+    var totalOpt = document.createElement("option");
+    totalOpt.value = "TOTAL";
+    totalOpt.textContent = "Total";
+    lbSelect.appendChild(totalOpt);
+
+    if (prevStage && stageSelect.querySelector('option[value="' + prevStage + '"]')) {
+      stageSelect.value = prevStage;
+    }
+    if (prevLb && lbSelect.querySelector('option[value="' + prevLb + '"]')) {
+      lbSelect.value = prevLb;
+    }
+
+    if (leaderboardTab.style.display !== "none") {
+      loadLeaderboard();
+    }
+  }
+
+  function renderSettingsNameInputs() {
+    var container = document.getElementById("station-name-list");
+    container.innerHTML = "";
+    stationsList.forEach(function (name, idx) {
+      var row = document.createElement("div");
+      row.className = "settings-row";
+
+      var span = document.createElement("span");
+      span.textContent = "Station " + (idx + 1) + ":";
+
+      var input = document.createElement("input");
+      input.type = "text";
+      input.value = name;
+      input.dataset.idx = idx;
+      input.className = "station-name-input";
+
+      row.appendChild(span);
+      row.appendChild(input);
+      container.appendChild(row);
+    });
+  }
+
+  document.getElementById("btn-update-count").addEventListener("click", function () {
+    var n = parseInt(document.getElementById("station_count").value, 10);
+    if (!n || n < 1) { alert("Ange minst 1 station."); return; }
+    if (n > 20) { alert("Max 20 stationer stöds."); return; }
+
+    var newList = stationsList.slice(0, n);
+    while (newList.length < n) {
+      newList.push("Station " + (newList.length + 1));
+    }
+    db.ref("settings/stations").set(newList).then(function () {
+      alert("Antal stationer uppdaterat till " + n + ".");
+    });
+  });
+
+  document.getElementById("btn-save-names").addEventListener("click", function () {
+    var inputs = document.querySelectorAll(".station-name-input");
+    var newList = stationsList.slice();
+    inputs.forEach(function (inp) {
+      var idx = parseInt(inp.dataset.idx, 10);
+      var val = inp.value.trim();
+      newList[idx] = val || ("Station " + (idx + 1));
+    });
+    db.ref("settings/stations").set(newList).then(function () {
+      alert("Stationsnamn sparade!");
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Flikar
+  // ---------------------------------------------------------------
   var inputTab = document.getElementById("input-tab");
   var leaderboardTab = document.getElementById("leaderboard-tab");
+  var settingsTab = document.getElementById("settings-tab");
   var btnInput = document.getElementById("btn-input");
   var btnLeaderboard = document.getElementById("btn-leaderboard");
+  var btnSettings = document.getElementById("btn-settings");
 
   function switchTab(tab) {
     inputTab.style.display = tab === "input" ? "block" : "none";
     leaderboardTab.style.display = tab === "leaderboard" ? "block" : "none";
+    settingsTab.style.display = tab === "settings" ? "block" : "none";
     btnInput.classList.toggle("active", tab === "input");
     btnLeaderboard.classList.toggle("active", tab === "leaderboard");
+    btnSettings.classList.toggle("active", tab === "settings");
     if (tab === "leaderboard") loadLeaderboard();
   }
   btnInput.addEventListener("click", function () { switchTab("input"); });
   btnLeaderboard.addEventListener("click", function () { switchTab("leaderboard"); });
+  btnSettings.addEventListener("click", function () { switchTab("settings"); });
 
+  // ---------------------------------------------------------------
+  // Poäng-knappar (Metric / HF2020 / Stål)
+  // ---------------------------------------------------------------
+  var scoreSystems = {
+    metric: { label: "Metric", zones: [
+      { k: "A", v: 5 }, { k: "B", v: 4 }, { k: "C", v: 3 }, { k: "D", v: 1 }
+    ] },
+    hf2020: { label: "HF2020", zones: [
+      { k: "H", v: 1 }, { k: "A", v: 5 }, { k: "X", v: 2 },
+      { k: "B", v: 4 }, { k: "C", v: 3 }, { k: "D", v: 3 }
+    ] },
+    steel: { label: "Stål", zones: [
+      { k: "Träff", v: 10 }
+    ] }
+  };
+
+  var scoreModalBackdrop = document.getElementById("scoreModalBackdrop");
+  var stepSystem = document.getElementById("score-step-system");
+  var stepZones = document.getElementById("score-step-zones");
+  var zoneGrid = document.getElementById("zone-grid");
+  var tallyEl = document.getElementById("score-tally");
+  var tallySubEl = document.getElementById("score-tally-sub");
+  var scoreSystemTitle = document.getElementById("score-system-title");
+
+  var currentTally = 0;
+  var currentHits = [];
+
+  function openScoreModal() {
+    currentTally = 0;
+    currentHits = [];
+    stepSystem.style.display = "block";
+    stepZones.style.display = "none";
+    scoreModalBackdrop.classList.add("open");
+  }
+
+  function closeScoreModal() {
+    scoreModalBackdrop.classList.remove("open");
+  }
+
+  document.getElementById("gross_pts").addEventListener("click", openScoreModal);
+  document.getElementById("btn-score-cancel").addEventListener("click", closeScoreModal);
+
+  document.querySelectorAll(".system-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var sysKey = btn.dataset.system;
+      var sys = scoreSystems[sysKey];
+      scoreSystemTitle.textContent = sys.label;
+      zoneGrid.innerHTML = "";
+      currentTally = 0;
+      currentHits = [];
+      updateTallyDisplay();
+
+      sys.zones.forEach(function (zone) {
+        var zbtn = document.createElement("button");
+        zbtn.type = "button";
+        zbtn.className = "zone-btn";
+        zbtn.textContent = zone.k + " (" + zone.v + ")";
+        zbtn.addEventListener("click", function () {
+          currentTally += zone.v;
+          currentHits.push(zone.v);
+          updateTallyDisplay();
+        });
+        zoneGrid.appendChild(zbtn);
+      });
+
+      stepSystem.style.display = "none";
+      stepZones.style.display = "block";
+    });
+  });
+
+  function updateTallyDisplay() {
+    tallyEl.textContent = currentTally + " poäng";
+    tallySubEl.textContent = currentHits.length + " träffar";
+  }
+
+  document.getElementById("btn-score-undo").addEventListener("click", function () {
+    if (currentHits.length === 0) return;
+    var last = currentHits.pop();
+    currentTally -= last;
+    updateTallyDisplay();
+  });
+
+  document.getElementById("btn-score-reset").addEventListener("click", function () {
+    currentTally = 0;
+    currentHits = [];
+    updateTallyDisplay();
+  });
+
+  document.getElementById("btn-score-back").addEventListener("click", function () {
+    stepSystem.style.display = "block";
+    stepZones.style.display = "none";
+  });
+
+  document.getElementById("btn-score-done").addEventListener("click", function () {
+    document.getElementById("gross_pts").value = currentTally;
+    closeScoreModal();
+  });
+
+  // ---------------------------------------------------------------
+  // Bekräftelsemodal
+  // ---------------------------------------------------------------
+  var confirmModalBackdrop = document.getElementById("confirmModalBackdrop");
+  var confirmText = document.getElementById("confirm-text");
+
+  function showConfirm(msg) {
+    confirmText.textContent = msg;
+    confirmModalBackdrop.classList.add("open");
+  }
+  document.getElementById("btn-confirm-ok").addEventListener("click", function () {
+    confirmModalBackdrop.classList.remove("open");
+  });
+
+  // ---------------------------------------------------------------
+  // Spara resultat
+  // ---------------------------------------------------------------
   function saveScore() {
     if (!db) { alert("Ingen databasanslutning."); return; }
 
-    var stage = document.getElementById("stage_select").value;
+    var pinVal = document.getElementById("pin").value;
+    if (pinVal !== PIN) {
+      alert("Fel PIN-kod! Du har inte behörighet att spara.");
+      return;
+    }
+
+    var stageId = document.getElementById("stage_select").value;
+    var stageName = document.getElementById("stage_select").selectedOptions[0]
+      ? document.getElementById("stage_select").selectedOptions[0].textContent : stageId;
     var name = document.getElementById("shooter_name").value.trim();
     var gross = parseInt(document.getElementById("gross_pts").value, 10) || 0;
     var penalty = parseInt(document.getElementById("penalty_pts").value, 10) || 0;
+    var bonus = parseInt(document.getElementById("bonus_pts").value, 10) || 0;
     var time = parseFloat(document.getElementById("time_sec").value) || 0;
 
     if (!name || time <= 0) {
@@ -151,89 +531,268 @@
       return;
     }
 
-    var netPoints = gross - penalty;
+    var shooterKey = sanitizeKey(name);
+    var entryRef = db.ref("matches/match1/" + stageId + "/" + shooterKey);
+
+    saveBtn.disabled = true;
+
+    entryRef.once("value").then(function (snap) {
+      if (snap.val() !== null) {
+        saveBtn.disabled = false;
+        setStatus("Skytten finns redan registrerad på denna station.", "status-bad");
+        alert("Det finns redan ett resultat för " + name + " på " + stageName + ". Gå till Topplistan för att ändra det (kräver PIN).");
+        return;
+      }
+
+      var netPoints = gross - penalty + bonus;
+      var hitFactor = netPoints > 0 ? (netPoints / time) : 0;
+
+      entryRef.set({
+        name: name,
+        gross: gross,
+        penalty: penalty,
+        bonus: bonus,
+        net: netPoints,
+        time: time,
+        hf: parseFloat(hitFactor.toFixed(4))
+      }).then(function () {
+        saveBtn.disabled = false;
+        setStatus("Sparat för " + name + " ✔", "status-ok");
+        showConfirm("Sparat!\n" + name + " – " + stageName);
+        document.getElementById("shooter_name").value = "";
+        document.getElementById("gross_pts").value = "";
+        document.getElementById("penalty_pts").value = "0";
+        document.getElementById("bonus_pts").value = "0";
+        document.getElementById("time_sec").value = "";
+      }).catch(function (err) {
+        saveBtn.disabled = false;
+        setStatus("Fel vid lagring: " + err.message, "status-bad");
+      });
+    }).catch(function (err) {
+      saveBtn.disabled = false;
+      setStatus("Fel: " + err.message, "status-bad");
+    });
+  }
+  saveBtn.addEventListener("click", saveScore);
+
+  // ---------------------------------------------------------------
+  // Topplista (per station + Total)
+  // ---------------------------------------------------------------
+  var currentListenerRef = null;
+
+  function loadLeaderboard() {
+    var val = lbSelect.value;
+    var titleText = lbSelect.selectedOptions[0] ? lbSelect.selectedOptions[0].textContent : val;
+    document.getElementById("current_stage_title").textContent = titleText;
+
+    if (currentListenerRef) {
+      currentListenerRef.off("value");
+      currentListenerRef = null;
+    }
+
+    var clearBtn = document.getElementById("btn-clear");
+
+    if (val === "TOTAL") {
+      clearBtn.style.display = "none";
+      currentListenerRef = db.ref("matches/match1");
+      currentListenerRef.on("value", renderTotalLeaderboard);
+    } else {
+      clearBtn.style.display = "block";
+      currentListenerRef = db.ref("matches/match1/" + val);
+      currentListenerRef.on("value", function (snapshot) {
+        renderStationLeaderboard(val, snapshot);
+      });
+    }
+  }
+  lbSelect.addEventListener("change", loadLeaderboard);
+
+  function renderStationLeaderboard(stageId, snapshot) {
+    var data = snapshot.val();
+    var listDiv = document.getElementById("leaderboard-list");
+    listDiv.innerHTML = "";
+
+    if (!data) {
+      listDiv.innerHTML = "<p style='text-align:center;color:#64748B;'>Inga resultat registrerade på denna station än.</p>";
+      return;
+    }
+
+    var shooters = Object.keys(data).map(function (key) {
+      var obj = data[key];
+      obj._key = key;
+      return obj;
+    });
+    shooters.sort(function (a, b) { return b.hf - a.hf; });
+
+    var maxHF = shooters[0].hf;
+    var maxStagePoints = 100;
+
+    shooters.forEach(function (s, index) {
+      var stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
+      var percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
+
+      var card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        '<div class="rank-badge">#' + (index + 1) + '</div>' +
+        '<div class="shooter-info">' +
+          '<span class="hf-badge">HF: ' + s.hf.toFixed(4) + '</span>' +
+          '<strong>' + escapeHtml(s.name) + '</strong>' +
+          '<div class="meta-text">Poäng: ' + s.net + ' (' + s.gross + ' - ' + s.penalty + ' straff + ' + (s.bonus || 0) + ' bonus) | Tid: ' + s.time + 's</div>' +
+          '<div class="meta-text" style="color:var(--secondary);font-weight:bold;">Stationspoäng: ' + stagePoints + ' (' + percentage + '%)</div>' +
+        '</div>';
+
+      var editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "small-btn";
+      editBtn.textContent = "✏️ Ändra / Radera";
+      editBtn.addEventListener("click", function () {
+        openEditModal(stageId, s._key, s);
+      });
+      card.appendChild(editBtn);
+
+      listDiv.appendChild(card);
+    });
+  }
+
+  function renderTotalLeaderboard(snapshot) {
+    var allData = snapshot.val() || {};
+    var listDiv = document.getElementById("leaderboard-list");
+    listDiv.innerHTML = "";
+
+    var totals = {}; // shooterKey -> {name, stagePoints, netSum, timeSum}
+
+    stationsList.forEach(function (name, idx) {
+      var sid = stationId(idx);
+      var stationData = allData[sid];
+      if (!stationData) return;
+
+      var shooters = Object.keys(stationData).map(function (key) {
+        var obj = stationData[key];
+        obj._key = key;
+        return obj;
+      });
+      if (shooters.length === 0) return;
+
+      var maxHF = Math.max.apply(null, shooters.map(function (s) { return s.hf; }));
+
+      shooters.forEach(function (s) {
+        var stagePoints = maxHF > 0 ? (s.hf / maxHF) * 100 : 0;
+        if (!totals[s._key]) {
+          totals[s._key] = { name: s.name, stagePoints: 0, netSum: 0, timeSum: 0 };
+        }
+        totals[s._key].stagePoints += stagePoints;
+        totals[s._key].netSum += s.net;
+        totals[s._key].timeSum += s.time;
+      });
+    });
+
+    var list = Object.keys(totals).map(function (key) { return totals[key]; });
+
+    if (list.length === 0) {
+      listDiv.innerHTML = "<p style='text-align:center;color:#64748B;'>Inga resultat registrerade ännu.</p>";
+      return;
+    }
+
+    list.sort(function (a, b) { return b.stagePoints - a.stagePoints; });
+    var maxTotal = list[0].stagePoints;
+
+    list.forEach(function (s, index) {
+      var pct = maxTotal > 0 ? ((s.stagePoints / maxTotal) * 100).toFixed(2) : "0.00";
+      var card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        '<div class="rank-badge">#' + (index + 1) + '</div>' +
+        '<div class="shooter-info">' +
+          '<strong>' + escapeHtml(s.name) + '</strong>' +
+          '<div class="total-highlight">Stationspoäng totalt: ' + s.stagePoints.toFixed(4) + ' (' + pct + '%)</div>' +
+          '<div class="meta-text">Poäng totalt: ' + s.netSum + ' | Tid totalt: ' + s.timeSum.toFixed(2) + 's</div>' +
+        '</div>';
+      listDiv.appendChild(card);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Nollställ station
+  // ---------------------------------------------------------------
+  document.getElementById("btn-clear").addEventListener("click", function () {
+    var stageId = lbSelect.value;
+    if (stageId === "TOTAL") return;
+
+    var pinVal = prompt("Ange PIN-kod för att nollställa denna station:");
+    if (pinVal === null) return;
+    if (pinVal !== PIN) { alert("Fel PIN-kod!"); return; }
+
+    if (confirm("Är du säker på att du vill radera alla resultat för denna station?")) {
+      db.ref("matches/match1/" + stageId).remove().then(function () {
+        setStatus("Stationen nollställd.", "status-ok");
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // Ändra / Radera resultat (kräver PIN)
+  // ---------------------------------------------------------------
+  var editModalBackdrop = document.getElementById("editModalBackdrop");
+  var editShooterLabel = document.getElementById("edit-shooter-label");
+  var editContext = null; // {stageId, shooterKey}
+
+  function openEditModal(stageId, shooterKey, data) {
+    var pinVal = prompt("Ange PIN-kod för att ändra eller radera detta resultat:");
+    if (pinVal === null) return;
+    if (pinVal !== PIN) { alert("Fel PIN-kod!"); return; }
+
+    editContext = { stageId: stageId, shooterKey: shooterKey };
+    editShooterLabel.textContent = "Skytt: " + data.name;
+    document.getElementById("edit_gross").value = data.gross;
+    document.getElementById("edit_penalty").value = data.penalty;
+    document.getElementById("edit_bonus").value = data.bonus || 0;
+    document.getElementById("edit_time").value = data.time;
+
+    editModalBackdrop.classList.add("open");
+  }
+
+  document.getElementById("btn-edit-cancel").addEventListener("click", function () {
+    editModalBackdrop.classList.remove("open");
+    editContext = null;
+  });
+
+  document.getElementById("btn-edit-save").addEventListener("click", function () {
+    if (!editContext) return;
+    var gross = parseInt(document.getElementById("edit_gross").value, 10) || 0;
+    var penalty = parseInt(document.getElementById("edit_penalty").value, 10) || 0;
+    var bonus = parseInt(document.getElementById("edit_bonus").value, 10) || 0;
+    var time = parseFloat(document.getElementById("edit_time").value) || 0;
+
+    if (time <= 0) { alert("Ange en giltig tid."); return; }
+
+    var netPoints = gross - penalty + bonus;
     var hitFactor = netPoints > 0 ? (netPoints / time) : 0;
 
-    var stageRef = db.ref("matches/match1/" + stage);
-    var newRef = stageRef.push();
-
-    newRef.set({
-      name: name,
+    var ref = db.ref("matches/match1/" + editContext.stageId + "/" + editContext.shooterKey);
+    ref.update({
       gross: gross,
       penalty: penalty,
+      bonus: bonus,
       net: netPoints,
       time: time,
       hf: parseFloat(hitFactor.toFixed(4))
     }).then(function () {
-      setStatus("Sparat för " + name + " ✔", "status-ok");
-      document.getElementById("shooter_name").value = "";
-      document.getElementById("gross_pts").value = "";
-      document.getElementById("penalty_pts").value = "0";
-      document.getElementById("time_sec").value = "";
-    }).catch(function (err) {
-      setStatus("Fel vid lagring: " + err.message, "status-bad");
+      editModalBackdrop.classList.remove("open");
+      editContext = null;
+      showConfirm("Resultatet uppdaterat!");
     });
-  }
-  document.getElementById("btn-save").addEventListener("click", saveScore);
+  });
 
-  var lbSelect = document.getElementById("leaderboard_stage_select");
-  var currentListener = null;
-  var currentListenerRef = null;
+  document.getElementById("btn-edit-delete").addEventListener("click", function () {
+    if (!editContext) return;
+    if (!confirm("Radera detta resultat permanent?")) return;
 
-  function loadLeaderboard() {
-    var stage = lbSelect.value;
-    document.getElementById("current_stage_title").textContent = stage;
-
-    if (currentListenerRef && currentListener) {
-      currentListenerRef.off("value", currentListener);
-    }
-
-    var stageRef = db.ref("matches/match1/" + stage);
-    currentListenerRef = stageRef;
-
-    currentListener = stageRef.on("value", function (snapshot) {
-      var data = snapshot.val();
-      var listDiv = document.getElementById("leaderboard-list");
-      listDiv.innerHTML = "";
-
-      if (!data) {
-        listDiv.innerHTML = "<p style='text-align:center;color:#64748B;'>Inga resultat registrerade på denna station än.</p>";
-        return;
-      }
-
-      var shooters = Object.keys(data).map(function (id) { return data[id]; });
-      shooters.sort(function (a, b) { return b.hf - a.hf; });
-
-      var maxHF = shooters[0].hf;
-      var maxStagePoints = 100;
-
-      shooters.forEach(function (s, index) {
-        var stagePoints = maxHF > 0 ? ((s.hf / maxHF) * maxStagePoints).toFixed(4) : "0.0000";
-        var percentage = maxHF > 0 ? ((s.hf / maxHF) * 100).toFixed(2) : "0.00";
-
-        var card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML =
-          '<div class="rank-badge">#' + (index + 1) + '</div>' +
-          '<div class="shooter-info">' +
-            '<span class="hf-badge">HF: ' + s.hf.toFixed(4) + '</span>' +
-            '<strong>' + s.name + '</strong>' +
-            '<div class="meta-text">Poäng: ' + s.net + ' (' + s.gross + ' minus ' + s.penalty + ') | Tid: ' + s.time + 's</div>' +
-            '<div class="meta-text" style="color:var(--secondary);font-weight:bold;">Stationspoäng: ' + stagePoints + ' (' + percentage + '%)</div>' +
-          '</div>';
-        listDiv.appendChild(card);
-      });
+    var ref = db.ref("matches/match1/" + editContext.stageId + "/" + editContext.shooterKey);
+    ref.remove().then(function () {
+      editModalBackdrop.classList.remove("open");
+      editContext = null;
+      showConfirm("Resultatet raderat.");
     });
-  }
-  lbSelect.addEventListener("change", loadLeaderboard);
-
-  document.getElementById("btn-clear").addEventListener("click", function () {
-    if (!db) return;
-    if (confirm("Är du säker på att du vill radera alla resultat för denna station?")) {
-      db.ref("matches/match1/" + lbSelect.value).remove().then(function () {
-        setStatus("Stationen nollställd.", "status-ok");
-      });
-    }
   });
 
 })();
