@@ -35,6 +35,17 @@
   .settings-row input { flex:1; }
   .settings-row span { width:70px; font-size:13px; color:#64748B; }
 
+  .counter-row { display:flex; align-items:center; gap:10px; }
+  .counter-btn { flex:0 0 70px; padding:14px 0; border:none; border-radius:8px; font-weight:bold; font-size:16px; color:#fff; cursor:pointer; }
+  .counter-red { background:var(--danger); }
+  .counter-green { background:var(--secondary); }
+  .counter-display { flex:1; text-align:center; font-weight:bold; font-size:15px; }
+  .counter-undo { flex:0 0 70px; padding:10px 0; border:none; border-radius:8px; background:#E4E7EB; font-size:12px; font-weight:bold; cursor:pointer; }
+
+  .chip-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip { background:#E4E7EB; color:var(--dark); padding:6px 12px; border-radius:16px; font-size:13px; border:none; cursor:pointer; }
+  .chip:active { background:#CBD5E0; }
+
   .modal-backdrop { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; padding:15px; box-sizing:border-box; }
   .modal-backdrop.open { display:flex; }
   .modal-box { background:#fff; border-radius:12px; padding:20px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; }
@@ -50,7 +61,7 @@
   .btn-confirm { background:var(--secondary); color:#fff; }
   .btn-cancel { background:#E4E7EB; }
   .confirm-icon { text-align:center; font-size:40px; margin-bottom:5px; }
-  .confirm-text { text-align:center; font-size:16px; margin-bottom:15px; }
+  .confirm-text { text-align:center; font-size:16px; margin-bottom:15px; white-space:pre-line; }
 </style>
 </head>
 <body>
@@ -78,23 +89,34 @@
     <div class="form-group">
       <label>Skytt</label>
       <input type="text" id="shooter_name" placeholder="Förnamn Efternamn">
+      <div class="chip-row" id="shooter-chips"></div>
     </div>
     <div class="form-group">
       <label>Poäng</label>
-      <input type="number" id="gross_pts" placeholder="Tryck för att ange träffar" readonly>
+      <input type="text" id="gross_pts" placeholder="Tryck för att ange träffar" readonly value="0">
       <div class="hint">Tryck på fältet för att registrera träffar med knappar</div>
     </div>
     <div class="form-group">
       <label>Straff</label>
-      <input type="number" id="penalty_pts" value="0">
+      <div class="counter-row">
+        <button type="button" class="counter-btn counter-red" id="btn-penalty-add">-10</button>
+        <div class="counter-display" id="penalty_display">Straff: 0</div>
+        <button type="button" class="counter-undo" id="btn-penalty-undo">Ångra</button>
+      </div>
+      <input type="hidden" id="penalty_pts" value="0">
     </div>
     <div class="form-group">
       <label>Bonus</label>
-      <input type="number" id="bonus_pts" value="0">
+      <div class="counter-row">
+        <button type="button" class="counter-btn counter-green" id="btn-bonus-add">+10</button>
+        <div class="counter-display" id="bonus_display">Bonus: 0</div>
+        <button type="button" class="counter-undo" id="btn-bonus-undo">Ångra</button>
+      </div>
+      <input type="hidden" id="bonus_pts" value="0">
     </div>
     <div class="form-group">
       <label>Tid</label>
-      <input type="number" step="0.01" id="time_sec" placeholder="T.ex. 14.52 (sekunder)">
+      <input type="text" id="time_sec" placeholder="Tryck för att ange tid" readonly>
     </div>
     <button id="btn-save" class="action-btn" type="button">Spara &amp; Beräkna</button>
     <div id="status" class="status-wait">Ansluter till databasen…</div>
@@ -126,6 +148,16 @@
       <div id="station-name-list"></div>
       <button id="btn-save-names" class="action-btn" type="button">Spara stationsnamn</button>
     </div>
+    <hr>
+    <div class="form-group">
+      <label>Byt PIN-kod</label>
+      <input type="password" id="pin_current" placeholder="Nuvarande PIN">
+      <div style="height:8px;"></div>
+      <input type="password" id="pin_new" placeholder="Ny PIN">
+      <div style="height:8px;"></div>
+      <input type="password" id="pin_confirm" placeholder="Bekräfta ny PIN">
+      <button id="btn-change-pin" class="action-btn" type="button">Byt PIN-kod</button>
+    </div>
   </div>
 </div>
 
@@ -134,11 +166,13 @@
   <div class="modal-box">
     <div id="score-step-system">
       <h3>Välj poängsystem</h3>
+      <div class="tally" id="score-tally-top">0 poäng</div>
       <button class="system-btn" data-system="metric" type="button">Metric</button>
       <button class="system-btn" data-system="hf2020" type="button">HF2020</button>
       <button class="system-btn" data-system="steel" type="button">Stål</button>
       <div class="modal-actions">
-        <button class="btn-cancel" id="btn-score-cancel" type="button">Avbryt</button>
+        <button class="btn-neutral" id="btn-score-reset-top" type="button">Nollställ allt</button>
+        <button class="btn-cancel" id="btn-score-cancel" type="button">Klar / Stäng</button>
       </div>
     </div>
     <div id="score-step-zones" style="display:none;">
@@ -151,9 +185,25 @@
         <button class="btn-neutral" id="btn-score-reset" type="button">Nollställ</button>
       </div>
       <div class="modal-actions">
-        <button class="btn-neutral" id="btn-score-back" type="button">Byt system</button>
+        <button class="btn-neutral" id="btn-score-back" type="button">Byt måltyp</button>
         <button class="btn-confirm" id="btn-score-done" type="button">Klar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- TIME ENTRY MODAL -->
+<div class="modal-backdrop" id="timeModalBackdrop">
+  <div class="modal-box">
+    <h3>Ange tid (sekunder)</h3>
+    <div class="tally" id="time-display">0</div>
+    <div class="zone-grid" id="time-keypad"></div>
+    <div class="modal-actions">
+      <button class="btn-neutral" id="btn-time-clear" type="button">Rensa</button>
+      <button class="btn-neutral" id="btn-time-back" type="button">Avbryt</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btn-time-done" type="button">Klar</button>
     </div>
   </div>
 </div>
@@ -208,7 +258,7 @@
 (function () {
   "use strict";
 
-  var PIN = "1234";
+  var currentPin = "1234";
 
   var firebaseConfig = {
     apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
@@ -256,9 +306,24 @@
   }
 
   // ---------------------------------------------------------------
+  // PIN-kod (delad i molnet)
+  // ---------------------------------------------------------------
+  if (db) {
+    db.ref("settings/pin").once("value").then(function (snap) {
+      if (snap.val() === null) {
+        db.ref("settings/pin").set(currentPin);
+      }
+    });
+    db.ref("settings/pin").on("value", function (snap) {
+      var val = snap.val();
+      if (val) currentPin = val;
+    });
+  }
+
+  // ---------------------------------------------------------------
   // Stationer (delade inställningar i molnet)
   // ---------------------------------------------------------------
-  var stationsList = []; // array av namn, index 0 = s1, index 1 = s2, ...
+  var stationsList = [];
 
   function defaultStations() {
     return ["Station 1", "Station 2", "Station 3", "Station 4"];
@@ -371,6 +436,26 @@
   });
 
   // ---------------------------------------------------------------
+  // Byt PIN-kod
+  // ---------------------------------------------------------------
+  document.getElementById("btn-change-pin").addEventListener("click", function () {
+    var cur = document.getElementById("pin_current").value;
+    var next = document.getElementById("pin_new").value;
+    var conf = document.getElementById("pin_confirm").value;
+
+    if (cur !== currentPin) { alert("Fel nuvarande PIN-kod!"); return; }
+    if (!next || next.length < 4) { alert("Ny PIN måste vara minst 4 tecken."); return; }
+    if (next !== conf) { alert("De nya PIN-koderna matchar inte."); return; }
+
+    db.ref("settings/pin").set(next).then(function () {
+      alert("PIN-koden är ändrad!");
+      document.getElementById("pin_current").value = "";
+      document.getElementById("pin_new").value = "";
+      document.getElementById("pin_confirm").value = "";
+    });
+  });
+
+  // ---------------------------------------------------------------
   // Flikar
   // ---------------------------------------------------------------
   var inputTab = document.getElementById("input-tab");
@@ -391,10 +476,76 @@
   }
   btnInput.addEventListener("click", function () { switchTab("input"); });
   btnLeaderboard.addEventListener("click", function () { switchTab("leaderboard"); });
-  btnSettings.addEventListener("click", function () { switchTab("settings"); });
+  btnSettings.addEventListener("click", function () {
+    var pinVal = prompt("Ange PIN-kod för att komma åt inställningar:");
+    if (pinVal === null) return;
+    if (pinVal !== currentPin) { alert("Fel PIN-kod!"); return; }
+    switchTab("settings");
+  });
 
   // ---------------------------------------------------------------
-  // Poäng-knappar (Metric / HF2020 / Stål)
+  // Skytt-snabbval
+  // ---------------------------------------------------------------
+  var knownShooters = {};
+
+  if (db) {
+    db.ref("shooters").on("value", function (snap) {
+      knownShooters = snap.val() || {};
+      renderShooterChips();
+    });
+  }
+
+  function renderShooterChips() {
+    var container = document.getElementById("shooter-chips");
+    container.innerHTML = "";
+    var names = Object.keys(knownShooters).map(function (k) { return knownShooters[k]; });
+    names.sort(function (a, b) { return a.localeCompare(b, "sv"); });
+    names.forEach(function (name) {
+      var chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = name;
+      chip.addEventListener("click", function () {
+        document.getElementById("shooter_name").value = name;
+      });
+      container.appendChild(chip);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Straff / Bonus - räkneknappar
+  // ---------------------------------------------------------------
+  function setupCounter(displayId, hiddenId, addBtnId, undoBtnId, prefixText) {
+    var taps = [];
+    var displayEl = document.getElementById(displayId);
+    var hiddenEl = document.getElementById(hiddenId);
+
+    function update() {
+      var total = taps.length * 10;
+      hiddenEl.value = total;
+      displayEl.textContent = prefixText + ": " + total;
+    }
+
+    document.getElementById(addBtnId).addEventListener("click", function () {
+      taps.push(10);
+      update();
+    });
+    document.getElementById(undoBtnId).addEventListener("click", function () {
+      if (taps.length === 0) return;
+      taps.pop();
+      update();
+    });
+
+    update();
+
+    return { reset: function () { taps = []; update(); } };
+  }
+
+  var penaltyCounter = setupCounter("penalty_display", "penalty_pts", "btn-penalty-add", "btn-penalty-undo", "Straff");
+  var bonusCounter = setupCounter("bonus_display", "bonus_pts", "btn-bonus-add", "btn-bonus-undo", "Bonus");
+
+  // ---------------------------------------------------------------
+  // Poäng-knappar (Metric / HF2020 / Stål) - blandbara i samma pass
   // ---------------------------------------------------------------
   var scoreSystems = {
     metric: { label: "Metric", zones: [
@@ -414,6 +565,7 @@
   var stepZones = document.getElementById("score-step-zones");
   var zoneGrid = document.getElementById("zone-grid");
   var tallyEl = document.getElementById("score-tally");
+  var tallyTopEl = document.getElementById("score-tally-top");
   var tallySubEl = document.getElementById("score-tally-sub");
   var scoreSystemTitle = document.getElementById("score-system-title");
 
@@ -421,19 +573,27 @@
   var currentHits = [];
 
   function openScoreModal() {
-    currentTally = 0;
+    currentTally = parseInt(document.getElementById("gross_pts").value, 10) || 0;
     currentHits = [];
     stepSystem.style.display = "block";
     stepZones.style.display = "none";
+    updateTallyDisplay();
     scoreModalBackdrop.classList.add("open");
   }
 
-  function closeScoreModal() {
+  function closeScoreModalAndApply() {
+    document.getElementById("gross_pts").value = currentTally;
     scoreModalBackdrop.classList.remove("open");
   }
 
   document.getElementById("gross_pts").addEventListener("click", openScoreModal);
-  document.getElementById("btn-score-cancel").addEventListener("click", closeScoreModal);
+  document.getElementById("btn-score-cancel").addEventListener("click", closeScoreModalAndApply);
+
+  document.getElementById("btn-score-reset-top").addEventListener("click", function () {
+    currentTally = 0;
+    currentHits = [];
+    updateTallyDisplay();
+  });
 
   document.querySelectorAll(".system-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -441,8 +601,6 @@
       var sys = scoreSystems[sysKey];
       scoreSystemTitle.textContent = sys.label;
       zoneGrid.innerHTML = "";
-      currentTally = 0;
-      currentHits = [];
       updateTallyDisplay();
 
       sys.zones.forEach(function (zone) {
@@ -465,7 +623,8 @@
 
   function updateTallyDisplay() {
     tallyEl.textContent = currentTally + " poäng";
-    tallySubEl.textContent = currentHits.length + " träffar";
+    tallyTopEl.textContent = currentTally + " poäng";
+    tallySubEl.textContent = currentHits.length + " träffar denna omgång";
   }
 
   document.getElementById("btn-score-undo").addEventListener("click", function () {
@@ -484,11 +643,58 @@
   document.getElementById("btn-score-back").addEventListener("click", function () {
     stepSystem.style.display = "block";
     stepZones.style.display = "none";
+    updateTallyDisplay();
   });
 
-  document.getElementById("btn-score-done").addEventListener("click", function () {
-    document.getElementById("gross_pts").value = currentTally;
-    closeScoreModal();
+  document.getElementById("btn-score-done").addEventListener("click", closeScoreModalAndApply);
+
+  // ---------------------------------------------------------------
+  // Tid - sifferknappar
+  // ---------------------------------------------------------------
+  var timeModalBackdrop = document.getElementById("timeModalBackdrop");
+  var timeDisplay = document.getElementById("time-display");
+  var timeKeypad = document.getElementById("time-keypad");
+  var timeString = "";
+
+  var keypadKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
+  keypadKeys.forEach(function (key) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "zone-btn";
+    btn.textContent = key;
+    btn.addEventListener("click", function () {
+      if (key === "⌫") {
+        timeString = timeString.slice(0, -1);
+      } else if (key === ".") {
+        if (timeString.indexOf(".") === -1) {
+          timeString += (timeString === "" ? "0." : ".");
+        }
+      } else {
+        timeString += key;
+      }
+      timeDisplay.textContent = timeString === "" ? "0" : timeString;
+    });
+    timeKeypad.appendChild(btn);
+  });
+
+  document.getElementById("time_sec").addEventListener("click", function () {
+    timeString = document.getElementById("time_sec").value || "";
+    timeDisplay.textContent = timeString === "" ? "0" : timeString;
+    timeModalBackdrop.classList.add("open");
+  });
+
+  document.getElementById("btn-time-clear").addEventListener("click", function () {
+    timeString = "";
+    timeDisplay.textContent = "0";
+  });
+
+  document.getElementById("btn-time-back").addEventListener("click", function () {
+    timeModalBackdrop.classList.remove("open");
+  });
+
+  document.getElementById("btn-time-done").addEventListener("click", function () {
+    document.getElementById("time_sec").value = timeString;
+    timeModalBackdrop.classList.remove("open");
   });
 
   // ---------------------------------------------------------------
@@ -512,7 +718,7 @@
     if (!db) { alert("Ingen databasanslutning."); return; }
 
     var pinVal = document.getElementById("pin").value;
-    if (pinVal !== PIN) {
+    if (pinVal !== currentPin) {
       alert("Fel PIN-kod! Du har inte behörighet att spara.");
       return;
     }
@@ -556,14 +762,17 @@
         time: time,
         hf: parseFloat(hitFactor.toFixed(4))
       }).then(function () {
+        db.ref("shooters/" + shooterKey).set(name);
+
         saveBtn.disabled = false;
         setStatus("Sparat för " + name + " ✔", "status-ok");
         showConfirm("Sparat!\n" + name + " – " + stageName);
+
         document.getElementById("shooter_name").value = "";
-        document.getElementById("gross_pts").value = "";
-        document.getElementById("penalty_pts").value = "0";
-        document.getElementById("bonus_pts").value = "0";
+        document.getElementById("gross_pts").value = "0";
         document.getElementById("time_sec").value = "";
+        penaltyCounter.reset();
+        bonusCounter.reset();
       }).catch(function (err) {
         saveBtn.disabled = false;
         setStatus("Fel vid lagring: " + err.message, "status-bad");
@@ -659,7 +868,7 @@
     var listDiv = document.getElementById("leaderboard-list");
     listDiv.innerHTML = "";
 
-    var totals = {}; // shooterKey -> {name, stagePoints, netSum, timeSum}
+    var totals = {};
 
     stationsList.forEach(function (name, idx) {
       var sid = stationId(idx);
@@ -720,7 +929,7 @@
 
     var pinVal = prompt("Ange PIN-kod för att nollställa denna station:");
     if (pinVal === null) return;
-    if (pinVal !== PIN) { alert("Fel PIN-kod!"); return; }
+    if (pinVal !== currentPin) { alert("Fel PIN-kod!"); return; }
 
     if (confirm("Är du säker på att du vill radera alla resultat för denna station?")) {
       db.ref("matches/match1/" + stageId).remove().then(function () {
@@ -734,12 +943,12 @@
   // ---------------------------------------------------------------
   var editModalBackdrop = document.getElementById("editModalBackdrop");
   var editShooterLabel = document.getElementById("edit-shooter-label");
-  var editContext = null; // {stageId, shooterKey}
+  var editContext = null;
 
   function openEditModal(stageId, shooterKey, data) {
     var pinVal = prompt("Ange PIN-kod för att ändra eller radera detta resultat:");
     if (pinVal === null) return;
-    if (pinVal !== PIN) { alert("Fel PIN-kod!"); return; }
+    if (pinVal !== currentPin) { alert("Fel PIN-kod!"); return; }
 
     editContext = { stageId: stageId, shooterKey: shooterKey };
     editShooterLabel.textContent = "Skytt: " + data.name;
