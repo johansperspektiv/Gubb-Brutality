@@ -105,7 +105,7 @@
 <body>
 
 <div class="container">
-  <h1>Poängräkning</h1>
+  <h1 id="app-title">Poängräkning</h1>
 
   <div class="tab-buttons">
     <button id="btn-input" class="tab-btn active" type="button">Mata in</button>
@@ -120,6 +120,10 @@
     <div class="form-group">
       <label>Plats</label>
       <input type="text" id="match_location" placeholder="Var hålls tävlingen?">
+    </div>
+    <div class="form-group">
+      <label>Datum</label>
+      <input type="date" id="match_date">
     </div>
     <div class="form-group">
       <label>Skjutledare</label>
@@ -200,6 +204,11 @@
   <!-- SETTINGS TAB -->
   <div id="settings-tab" style="display:none;">
     <h2>Inställningar</h2>
+    <div class="form-group">
+      <label>Apptitel</label>
+      <input type="text" id="app_title_input" placeholder="Poängräkning">
+    </div>
+    <hr>
     <button id="btn-add-station" class="action-btn" type="button">➕ Lägg till ny station</button>
     <div id="station-cards" style="margin-top:15px;"></div>
 
@@ -208,12 +217,14 @@
 
     <hr>
     <div class="form-group">
-      <label>Byt PIN-kod (kräver ägarkod)</label>
-      <input type="password" id="pin_current" placeholder="Nuvarande PIN">
+      <label>Byt PIN-kod</label>
+      <input type="password" id="pin_owner" placeholder="Ägarkod" autocomplete="off">
       <div style="height:8px;"></div>
-      <input type="password" id="pin_new" placeholder="Ny PIN">
+      <input type="password" id="pin_current" placeholder="Nuvarande PIN" autocomplete="off">
       <div style="height:8px;"></div>
-      <input type="password" id="pin_confirm" placeholder="Bekräfta ny PIN">
+      <input type="password" id="pin_new" placeholder="Ny PIN" autocomplete="off">
+      <div style="height:8px;"></div>
+      <input type="password" id="pin_confirm" placeholder="Bekräfta ny PIN" autocomplete="off">
       <button id="btn-change-pin" class="action-btn" type="button">Byt PIN-kod</button>
     </div>
   </div>
@@ -496,7 +507,7 @@
   var currentPin = "1234";
   // Ändra raden nedan till en hemlig kod bara DU känner till.
   // Den krävs (utöver PIN-koden) för att kunna byta PIN-koden.
-  var OWNER_CODE = "byt-mig-agarkod";
+  var OWNER_CODE = "moon";
 
   var firebaseConfig = {
     apiKey: "AIzaSyBS68ex85OXo6ah0G0V92LYNVCSxWbOE4k",
@@ -525,6 +536,25 @@
     setStatus("Kunde inte ansluta: " + e.message, "status-bad");
     if (saveBtn) saveBtn.disabled = true;
   }
+
+  // ---------------------------------------------------------------
+  // Apptitel (redigerbar, delad i molnet)
+  // ---------------------------------------------------------------
+  var appTitleEl = document.getElementById("app-title");
+  var appTitleInput = document.getElementById("app_title_input");
+
+  if (db) {
+    db.ref("settings/appTitle").on("value", function (snap) {
+      var title = snap.val() || "Poängräkning";
+      appTitleEl.textContent = title;
+      document.title = title;
+      if (document.activeElement !== appTitleInput) appTitleInput.value = title;
+    });
+  }
+  appTitleInput.addEventListener("change", function () {
+    var val = appTitleInput.value.trim() || "Poängräkning";
+    db.ref("settings/appTitle").set(val);
+  });
 
   // ---------------------------------------------------------------
   // Hjälpfunktioner
@@ -1259,6 +1289,9 @@
       var span = document.createElement("span");
       span.style.width = "auto";
       span.style.flex = "1";
+      span.style.overflow = "hidden";
+      span.style.textOverflow = "ellipsis";
+      span.style.whiteSpace = "nowrap";
       span.textContent = tmpl.templateName;
 
       var viewBtn = document.createElement("button");
@@ -1266,7 +1299,8 @@
       viewBtn.className = "small-btn";
       viewBtn.style.marginLeft = "0";
       viewBtn.style.marginTop = "0";
-      viewBtn.textContent = "👁️ Visa";
+      viewBtn.textContent = "👁️";
+      viewBtn.style.flex = "0 0 auto";
       viewBtn.addEventListener("click", function () {
         currentPreviewTemplate = tmpl;
         templatePreviewContent.innerHTML = templatePreviewHtml(tmpl);
@@ -1278,7 +1312,12 @@
       addBtn.className = "small-btn";
       addBtn.style.marginLeft = "6px";
       addBtn.style.marginTop = "0";
-      addBtn.textContent = "➕ Lägg till";
+      addBtn.textContent = "+";
+      addBtn.style.flex = "0 0 auto";
+      addBtn.style.fontSize = "18px";
+      addBtn.style.fontWeight = "900";
+      addBtn.style.color = "#ffffff";
+      addBtn.style.background = "var(--secondary)";
       addBtn.addEventListener("click", function () {
         addStationFromTemplate(tmpl);
       });
@@ -1290,6 +1329,7 @@
       delBtn.style.marginTop = "0";
       delBtn.style.background = "var(--danger)";
       delBtn.textContent = "🗑️";
+      delBtn.style.flex = "0 0 auto";
       delBtn.addEventListener("click", function () {
         if (!confirm("Ta bort mallen '" + tmpl.templateName + "'?")) return;
         var newList = list.slice();
@@ -1342,20 +1382,19 @@
   }
 
   document.getElementById("btn-change-pin").addEventListener("click", function () {
-    var ownerVal = prompt("Ange ägarkoden för att kunna byta PIN-kod:");
-    if (ownerVal === null) return;
-    if (ownerVal !== OWNER_CODE) { alert("Fel ägarkod. Endast appens ägare kan byta PIN-kod."); return; }
-
+    var ownerVal = document.getElementById("pin_owner").value;
     var cur = document.getElementById("pin_current").value;
     var next = document.getElementById("pin_new").value;
     var conf = document.getElementById("pin_confirm").value;
 
-    if (cur !== currentPin) { alert("Fel nuvarande PIN-kod!"); return; }
+    if (ownerVal !== OWNER_CODE) { alert("Fel ägarkod. Kontrollera att du skrivit exakt samma kod som står i koden (OWNER_CODE)."); return; }
+    if (cur !== currentPin) { alert("Fel nuvarande PIN-kod! (Detta är den vanliga PIN-koden, inte ägarkoden.)"); return; }
     if (!next || next.length < 4) { alert("Ny PIN måste vara minst 4 tecken."); return; }
     if (next !== conf) { alert("De nya PIN-koderna matchar inte."); return; }
 
     db.ref("settings/pin").set(next).then(function () {
       alert("PIN-koden är ändrad!");
+      document.getElementById("pin_owner").value = "";
       document.getElementById("pin_current").value = "";
       document.getElementById("pin_new").value = "";
       document.getElementById("pin_confirm").value = "";
@@ -1366,17 +1405,22 @@
   // Plats / Skjutledare (matchinfo, delat i molnet)
   // ---------------------------------------------------------------
   var locationInput = document.getElementById("match_location");
+  var dateInput = document.getElementById("match_date");
   var officerInput = document.getElementById("match_officer");
 
   if (db) {
     db.ref("settings/matchInfo").on("value", function (snap) {
       var info = snap.val() || {};
       if (document.activeElement !== locationInput) locationInput.value = info.location || "";
+      if (document.activeElement !== dateInput) dateInput.value = info.date || "";
       if (document.activeElement !== officerInput) officerInput.value = info.officer || "";
     });
   }
   locationInput.addEventListener("change", function () {
     db.ref("settings/matchInfo/location").set(locationInput.value);
+  });
+  dateInput.addEventListener("change", function () {
+    db.ref("settings/matchInfo/date").set(dateInput.value);
   });
   officerInput.addEventListener("change", function () {
     db.ref("settings/matchInfo/officer").set(officerInput.value);
@@ -2047,11 +2091,11 @@
       container.innerHTML = "";
 
       var title = document.createElement("h1");
-      title.textContent = "Poängräkning – Resultat";
+      title.textContent = appTitleEl.textContent + " – Resultat";
       container.appendChild(title);
 
       var infoP = document.createElement("p");
-      infoP.textContent = "Plats: " + (locationInput.value || "-") + " | Skjutledare: " + (officerInput.value || "-");
+      infoP.textContent = "Plats: " + (locationInput.value || "-") + " | Datum: " + (dateInput.value || "-") + " | Skjutledare: " + (officerInput.value || "-");
       container.appendChild(infoP);
 
       var allData = {};
