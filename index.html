@@ -220,11 +220,8 @@
     </div>
 
     <div class="info-box">
-      <p style="margin:0 0 8px 0;font-size:13px;">Hämta/synka det delade bas-utbudet av stationsmallar till din mallista — bra både för en ny användare och för att uppdatera dina egna om biblioteket ändrats. Mallar med samma namn skrivs över med senaste versionen, övriga rörs inte.</p>
-      <button id="btn-recover-legacy" class="small-btn" style="margin:0;">📑 Hämta bas-stationsmallar</button>
-      <div style="height:8px;"></div>
-      <p style="margin:0 0 8px 0;font-size:12px;color:#64748B;">Bygger/uppdaterar själva bas-biblioteket med ett färdigt standardutbud av stationer (Up drill, Double tap, El Presidente m.fl.). Kör efter varje ändring, hämta sedan in dem med knappen ovan.</p>
-      <button id="btn-seed-base-templates" class="small-btn" style="margin:0;background:var(--primary);">🌱 Bygg standardbibliotek</button>
+      <p style="margin:0 0 8px 0;font-size:13px;">Ersätter hela din lista med sparade stationsmallar med exakt de 12 fördefinierade standardstationerna (Up drill, Double tap, El Presidente m.fl.). Allt annat i din mallista — även gamla eller egna mallar — raderas.</p>
+      <button id="btn-recover-legacy" class="small-btn" style="margin:0;">📑 Hämta bas-stationer</button>
     </div>
 
     <hr>
@@ -726,73 +723,25 @@
     }
   ];
 
-  document.getElementById("btn-seed-base-templates").addEventListener("click", function () {
-    if (!confirm("Uppdatera standardstationerna (Up drill, Double tap, m.fl.) i det delade bas-biblioteket? Befintliga mallar med samma namn skrivs över med den senaste versionen.")) return;
-
-    db.ref("settings/stationTemplates").once("value").then(function (snap) {
-      var list = snap.val() || [];
-      var byName = {};
-      list.forEach(function (t, idx) { byName[t.templateName] = idx; });
-
-      var added = 0;
-      var updated = 0;
-      BASE_STATION_TEMPLATES.forEach(function (t) {
-        if (byName.hasOwnProperty(t.templateName)) {
-          list[byName[t.templateName]] = t;
-          updated++;
-        } else {
-          list.push(t);
-          byName[t.templateName] = list.length - 1;
-          added++;
-        }
-      });
-
-      db.ref("settings/stationTemplates").set(list).then(function () {
-        alert(added + " nya och " + updated + " uppdaterade standardstationer i det delade biblioteket! Tryck sedan på \"📑 Hämta bas-stationsmallar\" för att synka in dem i din egen mallista.");
-      }).catch(function (err) {
-        alert("Kunde inte spara: " + err.message);
-      });
-    }).catch(function (err) {
-      alert("Något gick fel: " + err.message);
-    });
-  });
-
   document.getElementById("btn-recover-legacy").addEventListener("click", function () {
-    if (!confirm("Hämta/uppdatera bas-stationsmallarna i din mallista? Mallar du redan har med samma namn skrivs över med den senaste versionen.")) return;
+    if (!confirm(
+      "Detta ERSÄTTER hela din lista med sparade stationsmallar med exakt de 12 standardstationerna " +
+      "(Up drill, Double tap, Mozambique drill, Zipper drill, Box drill, El Presidente, Bill drill, " +
+      "Hateful 8 drill, Hostage drill, Precision, Kompetensprov pistol, Kompetensprov karbin).\n\n" +
+      "Alla andra mallar du har (gamla eller egna) raderas permanent och kan inte återskapas.\n\n" +
+      "Fortsätta?"
+    )) return;
 
-    db.ref("settings/stationTemplates").once("value").then(function (baseSnap) {
-      var baseList = baseSnap.val() || [];
-      if (!baseList.length) {
-        alert("Inga bas-stationsmallar hittades.");
-        return;
-      }
+    var freshList = BASE_STATION_TEMPLATES.map(function (t) {
+      var copy = {};
+      for (var k in t) { if (t.hasOwnProperty(k)) copy[k] = t[k]; }
+      return copy;
+    });
 
-      db.ref(dbPath("settings/stationTemplates")).once("value").then(function (mySnap) {
-        var myList = mySnap.val() || [];
-        var byName = {};
-        myList.forEach(function (t, idx) { byName[t.templateName] = idx; });
-
-        var added = 0;
-        var updated = 0;
-        baseList.forEach(function (t) {
-          if (byName.hasOwnProperty(t.templateName)) {
-            myList[byName[t.templateName]] = t;
-            updated++;
-          } else {
-            myList.push(t);
-            byName[t.templateName] = myList.length - 1;
-            added++;
-          }
-        });
-
-        db.ref(dbPath("settings/stationTemplates")).set(myList).then(function () {
-          alert(added + " nya och " + updated + " uppdaterade stationsmall(ar) i din lista!");
-        }).catch(function (err) {
-          alert("Kunde inte spara: " + err.message);
-        });
-      });
+    db.ref(dbPath("settings/stationTemplates")).set(freshList).then(function () {
+      alert("Klart! Din mallista innehåller nu exakt de 12 standardstationerna.");
     }).catch(function (err) {
-      alert("Något gick fel: " + err.message);
+      alert("Kunde inte spara: " + err.message);
     });
   });
 
