@@ -220,7 +220,7 @@
     </div>
 
     <div class="info-box">
-      <p style="margin:0 0 8px 0;font-size:13px;">Ersätter hela din lista med sparade stationsmallar med exakt de 12 fördefinierade standardstationerna (Up drill, Double tap, El Presidente m.fl.). Allt annat i din mallista — även gamla eller egna mallar — raderas.</p>
+      <p style="margin:0 0 8px 0;font-size:13px;">Lägger till/uppdaterar de 12 fördefinierade standardstationerna (Up drill, Double tap, El Presidente m.fl.) i din mallista. Egna eller andra mallar du redan skapat påverkas inte och raderas inte.</p>
       <button id="btn-recover-legacy" class="small-btn" style="margin:0;">📑 Hämta bas-stationer</button>
     </div>
 
@@ -724,24 +724,35 @@
   ];
 
   document.getElementById("btn-recover-legacy").addEventListener("click", function () {
-    if (!confirm(
-      "Detta ERSÄTTER hela din lista med sparade stationsmallar med exakt de 12 standardstationerna " +
-      "(Up drill, Double tap, Mozambique drill, Zipper drill, Box drill, El Presidente, Bill drill, " +
-      "Hateful 8 drill, Hostage drill, Precision, Kompetensprov pistol, Kompetensprov karbin).\n\n" +
-      "Alla andra mallar du har (gamla eller egna) raderas permanent och kan inte återskapas.\n\n" +
-      "Fortsätta?"
-    )) return;
+    if (!confirm("Lägg till/uppdatera de 12 standardstationerna i din mallista? Andra mallar du redan skapat påverkas inte.")) return;
 
-    var freshList = BASE_STATION_TEMPLATES.map(function (t) {
-      var copy = {};
-      for (var k in t) { if (t.hasOwnProperty(k)) copy[k] = t[k]; }
-      return copy;
-    });
+    db.ref(dbPath("settings/stationTemplates")).once("value").then(function (snap) {
+      var myList = snap.val() || [];
+      var byName = {};
+      myList.forEach(function (t, idx) { byName[t.templateName] = idx; });
 
-    db.ref(dbPath("settings/stationTemplates")).set(freshList).then(function () {
-      alert("Klart! Din mallista innehåller nu exakt de 12 standardstationerna.");
+      var added = 0;
+      var updated = 0;
+      BASE_STATION_TEMPLATES.forEach(function (t) {
+        var copy = {};
+        for (var k in t) { if (t.hasOwnProperty(k)) copy[k] = t[k]; }
+        if (byName.hasOwnProperty(copy.templateName)) {
+          myList[byName[copy.templateName]] = copy;
+          updated++;
+        } else {
+          myList.push(copy);
+          byName[copy.templateName] = myList.length - 1;
+          added++;
+        }
+      });
+
+      db.ref(dbPath("settings/stationTemplates")).set(myList).then(function () {
+        alert(added + " nya och " + updated + " uppdaterade standardstation(er) i din mallista!");
+      }).catch(function (err) {
+        alert("Kunde inte spara: " + err.message);
+      });
     }).catch(function (err) {
-      alert("Kunde inte spara: " + err.message);
+      alert("Något gick fel: " + err.message);
     });
   });
 
