@@ -220,10 +220,10 @@
     </div>
 
     <div class="info-box">
-      <p style="margin:0 0 8px 0;font-size:13px;">Hämta det delade bas-utbudet av stationsmallar (byggt upp sedan tidigare) till din mallista — perfekt för en ny användare som snabbt vill komma igång med färdiga stationer. Lägger bara till nya mallar, skriver aldrig över något annat.</p>
+      <p style="margin:0 0 8px 0;font-size:13px;">Hämta/synka det delade bas-utbudet av stationsmallar till din mallista — bra både för en ny användare och för att uppdatera dina egna om biblioteket ändrats. Mallar med samma namn skrivs över med senaste versionen, övriga rörs inte.</p>
       <button id="btn-recover-legacy" class="small-btn" style="margin:0;">📑 Hämta bas-stationsmallar</button>
       <div style="height:8px;"></div>
-      <p style="margin:0 0 8px 0;font-size:12px;color:#64748B;">Bygger/uppdaterar själva bas-biblioteket med ett färdigt standardutbud av stationer (Up drill, Double tap, El Presidente m.fl.). Kör en gång, sedan hämtar alla in dem med knappen ovan.</p>
+      <p style="margin:0 0 8px 0;font-size:12px;color:#64748B;">Bygger/uppdaterar själva bas-biblioteket med ett färdigt standardutbud av stationer (Up drill, Double tap, El Presidente m.fl.). Kör efter varje ändring, hämta sedan in dem med knappen ovan.</p>
       <button id="btn-seed-base-templates" class="small-btn" style="margin:0;background:var(--primary);">🌱 Bygg standardbibliotek</button>
     </div>
 
@@ -727,29 +727,28 @@
   ];
 
   document.getElementById("btn-seed-base-templates").addEventListener("click", function () {
-    if (!confirm("Lägg till standardstationerna (Up drill, Double tap, m.fl.) i det delade bas-biblioteket? Redan befintliga mallar med samma namn hoppas över.")) return;
+    if (!confirm("Uppdatera standardstationerna (Up drill, Double tap, m.fl.) i det delade bas-biblioteket? Befintliga mallar med samma namn skrivs över med den senaste versionen.")) return;
 
     db.ref("settings/stationTemplates").once("value").then(function (snap) {
       var list = snap.val() || [];
-      var existingNames = {};
-      list.forEach(function (t) { existingNames[t.templateName] = true; });
+      var byName = {};
+      list.forEach(function (t, idx) { byName[t.templateName] = idx; });
 
       var added = 0;
+      var updated = 0;
       BASE_STATION_TEMPLATES.forEach(function (t) {
-        if (!existingNames[t.templateName]) {
+        if (byName.hasOwnProperty(t.templateName)) {
+          list[byName[t.templateName]] = t;
+          updated++;
+        } else {
           list.push(t);
-          existingNames[t.templateName] = true;
+          byName[t.templateName] = list.length - 1;
           added++;
         }
       });
 
-      if (added === 0) {
-        alert("Alla standardstationer finns redan i biblioteket.");
-        return;
-      }
-
       db.ref("settings/stationTemplates").set(list).then(function () {
-        alert(added + " standardstation(er) tillagda i det delade biblioteket! Tryck sedan på \"📑 Hämta bas-stationsmallar\" för att hämta in dem i din egen mallista.");
+        alert(added + " nya och " + updated + " uppdaterade standardstationer i det delade biblioteket! Tryck sedan på \"📑 Hämta bas-stationsmallar\" för att synka in dem i din egen mallista.");
       }).catch(function (err) {
         alert("Kunde inte spara: " + err.message);
       });
@@ -759,7 +758,7 @@
   });
 
   document.getElementById("btn-recover-legacy").addEventListener("click", function () {
-    if (!confirm("Hämta bas-stationsmallarna till din mallista? Mallar du redan har (med samma namn) hoppas över — inget skrivs över.")) return;
+    if (!confirm("Hämta/uppdatera bas-stationsmallarna i din mallista? Mallar du redan har med samma namn skrivs över med den senaste versionen.")) return;
 
     db.ref("settings/stationTemplates").once("value").then(function (baseSnap) {
       var baseList = baseSnap.val() || [];
@@ -770,25 +769,24 @@
 
       db.ref(dbPath("settings/stationTemplates")).once("value").then(function (mySnap) {
         var myList = mySnap.val() || [];
-        var existingNames = {};
-        myList.forEach(function (t) { existingNames[t.templateName] = true; });
+        var byName = {};
+        myList.forEach(function (t, idx) { byName[t.templateName] = idx; });
 
         var added = 0;
+        var updated = 0;
         baseList.forEach(function (t) {
-          if (!existingNames[t.templateName]) {
+          if (byName.hasOwnProperty(t.templateName)) {
+            myList[byName[t.templateName]] = t;
+            updated++;
+          } else {
             myList.push(t);
-            existingNames[t.templateName] = true;
+            byName[t.templateName] = myList.length - 1;
             added++;
           }
         });
 
-        if (added === 0) {
-          alert("Du har redan alla bas-stationsmallar.");
-          return;
-        }
-
         db.ref(dbPath("settings/stationTemplates")).set(myList).then(function () {
-          alert(added + " stationsmall(ar) tillagda i din lista!");
+          alert(added + " nya och " + updated + " uppdaterade stationsmall(ar) i din lista!");
         }).catch(function (err) {
           alert("Kunde inte spara: " + err.message);
         });
