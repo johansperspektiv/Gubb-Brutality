@@ -118,9 +118,12 @@
   <div id="input-tab">
     <h2>Registrera resultat</h2>
 
-    <div class="info-box" style="margin-bottom:15px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <div class="info-box" style="margin-bottom:15px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
       <span style="font-size:13px;">Matchkod: <strong id="current-match-code"></strong></span>
-      <button type="button" id="btn-change-matchcode" class="small-btn" style="margin:0;">Byt kod</button>
+      <div>
+        <button type="button" id="btn-show-matchcodes" class="small-btn" style="margin:0;">📋 Visa koder</button>
+        <button type="button" id="btn-change-matchcode" class="small-btn" style="margin:0 0 0 6px;">Byt kod</button>
+      </div>
     </div>
 
     <div class="form-group">
@@ -185,6 +188,10 @@
     <div class="form-group">
       <label>Tid</label>
       <input type="text" id="time_sec" placeholder="Tryck för att ange tid" readonly>
+      <div class="checkbox-row">
+        <input type="checkbox" id="no_time_toggle">
+        <span>Ingen tid (skjuts utan skjuttimer)</span>
+      </div>
     </div>
     <button id="btn-save" class="action-btn" type="button">Spara &amp; Beräkna</button>
     <div id="status" class="status-wait">Ansluter till databasen…</div>
@@ -225,18 +232,19 @@
       <input type="text" id="app_title_input" placeholder="Poängräkning">
     </div>
 
-    <div class="info-box">
-      <p style="margin:0 0 8px 0;font-size:13px;">Lägger till/uppdaterar de 12 fördefinierade standardstationerna (Up drill, Double tap, El Presidente m.fl.) i din mallista. Egna eller andra mallar du redan skapat påverkas inte och raderas inte.</p>
-      <button id="btn-recover-legacy" class="small-btn" style="margin:0;">📑 Hämta bas-stationer</button>
-    </div>
-
     <hr>
     <button id="btn-add-station" class="action-btn" type="button">➕ Lägg till ny station</button>
     <button id="btn-add-precision10" class="action-btn" type="button" style="background:var(--primary);">🎯 Lägg till 10× Precision (10 serier à 5 skott)</button>
     <div id="station-cards" style="margin-top:15px;"></div>
+    <button id="btn-remove-all-stations" class="danger-btn" type="button">🗑️ Ta bort alla stationer</button>
 
     <h2 style="margin-top:25px;">Sparade stationsmallar</h2>
     <div id="template-list"></div>
+
+    <div class="info-box" style="margin-top:15px;">
+      <p style="margin:0 0 8px 0;font-size:13px;">Lägger till/uppdaterar de 12 fördefinierade standardstationerna (Up drill, Double tap, El Presidente m.fl.) i din mallista. Egna eller andra mallar du redan skapat påverkas inte och raderas inte. Behövs oftast bara en gång.</p>
+      <button id="btn-recover-legacy" class="small-btn" style="margin:0;">📑 Hämta bas-stationer</button>
+    </div>
 
     <hr>
     <div class="form-group">
@@ -346,6 +354,18 @@
   </div>
 </div>
 
+<!-- MATCH CODES MODAL -->
+<div class="modal-backdrop" id="matchCodesModalBackdrop">
+  <div class="modal-box" style="text-align:left;">
+    <h3>Kända matchkoder</h3>
+    <p class="meta-text">Endast koder som skapats som "synliga" visas här. Dolda koder måste skrivas in manuellt.</p>
+    <div id="matchcodes-list"></div>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btn-close-matchcodes" type="button">Stäng</button>
+    </div>
+  </div>
+</div>
+
 <!-- MANAGE SHOOTERS MODAL -->
 <div class="modal-backdrop" id="manageShootersModalBackdrop">
   <div class="modal-box" style="text-align:left;">
@@ -400,23 +420,24 @@
     <ul>
       <li>Dela länken eller QR-koden ("🔗 QR/länk" på förstasidan) med skyttarna innan ni börjar.</li>
       <li>Fyll i Plats, Datum och ditt namn under Skjutledare högst upp på "Mata in" — synas live för alla enheter.</li>
-      <li>Alla som använder samma matchkod delar samma tävling. Har du en egen matchkod blandas din data aldrig med någon annans, även om ni kör samma app.</li>
+      <li>Alla som använder samma matchkod delar samma tävling. Har du en egen matchkod blandas din data aldrig med någon annans, även om ni kör samma app. Tryck "📋 Visa koder" bredvid matchkoden för att se och snabbt växla mellan tidigare synliga koder — vill du hålla en kod dold behöver du bara svara nej när appen frågar om den ska synas i listan.</li>
     </ul>
 
     <h4>Som skjutledare — Bygga stationer</h4>
     <ul>
       <li>Gå in på "Inställningar" (PIN krävs, men bara en gång per tillfälle om du redan skrivit in den korrekt på förstasidan) och lägg upp stationerna. Tryck på pennan ✏️ bredvid en station för att öppna redigeringsläget: namn, avstånd, vapen, startposition (Grundställning, Färdigställning, eller egen), måltyper (Metric, HF2020, Stål eller Precision — med antal mål och skott per mål), ev. bonusuppgift (alltid värd 10 poäng), No-shoot-mål, beskrivning och gärna en bild på stationen. Tryck "💾 Spara ändringar" när du är klar.</li>
       <li>Ska du köra ren precisionsskjutning kan du använda genvägen "🎯 Lägg till 10× Precision" som skapar tio färdiga stationer (10 serier à 5 skott) på en gång.</li>
-      <li>Spara gärna en station som mall (📑) för att snabbt kunna återanvända den vid nästa tävling — sparade mallar hittar du längre ner, sorterade efter avstånd. "📑 Hämta bas-stationer" lägger till appens 12 fördefinierade standardstationer i din mallista utan att röra dina egna.</li>
-      <li>Vill du köra samma övning flera gånger (t.ex. flera serier på en precisionsstation)? Tryck "🔁 Duplicera som Serie" i Inställningar, eller "➕ Lägg till en serie" direkt på Mata in (kräver PIN) — den nya serien hamnar automatiskt precis efter sin ursprungsstation, inte längst ner i listan.</li>
-      <li>Du kan även ta bort en station direkt från Mata in ("🗑️ Ta bort denna station", kräver PIN) — det går bara om stationen inte redan har registrerade resultat. Finns det resultat måste du först nollställa stationen under Topplista.</li>
+      <li>Spara gärna en station som mall (📑) för att snabbt kunna återanvända den vid nästa tävling — sparade mallar hittar du under Inställningar, sorterade efter avstånd. "📑 Hämta bas-stationer" (längre ner, behövs oftast bara en gång) lägger till appens 12 fördefinierade standardstationer i din mallista utan att röra dina egna.</li>
+      <li>Vill du köra samma övning flera gånger (t.ex. flera serier på en precisionsstation)? Tryck "🔁 Duplicera som Serie" i Inställningar, eller "➕ Lägg till en serie" direkt på Mata in (kräver PIN) — den nya serien hamnar automatiskt precis efter sin ursprungsstation, inte längst ner i listan, och poängsätts helt separat från originalstationen.</li>
+      <li>Du kan ta bort en enskild station direkt från Mata in ("🗑️ Ta bort denna station", kräver PIN) eller alla på en gång via "🗑️ Ta bort alla stationer" i Inställningar — båda blockeras om stationen/stationerna redan har registrerade resultat. Nollställ i så fall stationen under Topplista först.</li>
     </ul>
 
     <h4>Som skjutledare — Under tävlingen</h4>
     <ul>
-      <li>Under "Mata in": välj station, välj eller skriv in skyttens namn, skriv PIN-koden (låser upp Poäng/Straff/Bonus/Tid), och registrera träffarna med Poäng-knapparna — du kan blanda flera måltyper i samma omgång, varje träff läses upp med röst, och det finns en röd MISS-knapp om skytten bommar helt (på Precision ger MISS 0 poäng istället för avdrag). Lägg till ev. straff/bonus med plus/minus-knapparna, och ange tiden med sifferknapparna (frivilligt på Precision). Tryck sist på "Spara &amp; Beräkna" — en tydlig bekräftelseruta visas när det är klart.</li>
+      <li>Under "Mata in": välj station, välj eller skriv in skyttens namn, skriv PIN-koden (låser upp Poäng/Straff/Bonus/Tid), och registrera träffarna med Poäng-knapparna. Har stationen bara ett målsystem hoppar du direkt till träffknapparna; annars väljer du måltyp först. Du kan blanda flera måltyper i samma omgång, varje träff läses upp med röst, och det finns en röd MISS-knapp om skytten bommar helt (på Precision ger MISS 0 poäng istället för avdrag).</li>
+      <li>Lägg till ev. straff/bonus med plus/minus-knapparna, och ange tiden med sifferknapparna. Skjuts stationen utan skjuttimer kan du kryssa i "Ingen tid" för att slippa tidskravet. Tryck sist på "Spara &amp; Beräkna" — en tydlig bekräftelseruta visas när det är klart.</li>
       <li>Om skytten redan har ett resultat på stationen får du en fråga om du vill skriva över det — säg bara ja om det verkligen ska ändras.</li>
-      <li>Skrev du fel namn på en skytt? Tryck "✏️ Hantera skyttar" bredvid Skytt-fältet för att ändra eller ta bort namn ur listan (påverkar inte redan sparade resultat).</li>
+      <li>Skrev du fel namn på en skytt? Tryck "✏️ Hantera skyttar" bredvid Skytt-fältet för att ändra eller ta bort namn ur listan (påverkar inte redan sparade resultat). Skyttarna listas i den ordning de lades till.</li>
     </ul>
 
     <h4>Som skjutledare — Efter tävlingen</h4>
@@ -429,6 +450,7 @@
     <h4>Vanliga frågor (FAQ)</h4>
     <ul>
       <li><strong>Vad är matchkoden och varför behöver jag den?</strong><br>Matchkoden är din personliga "rum" i den delade databasen. Alla som skriver in samma kod ser samma tävling; olika koder håller olika personers data helt separerade i samma app.</li>
+      <li><strong>Syns min matchkod för alla?</strong><br>Bara om du väljer det. När du skapar eller byter kod frågar appen om den ska synas i den delade listan ("📋 Visa koder") — svarar du nej hålls koden helt dold och måste skrivas in manuellt av den som ska använda den.</li>
       <li><strong>Vad är ägarkoden och var hittar jag den?</strong><br>Ägarkoden är ett extra lösenord som bara krävs för att byta PIN-kod, så att inte vem som helst kan låsa ut dig. Den står i appens kod (leta efter texten OWNER_CODE) — byt den gärna till något eget bara du känner till.</li>
       <li><strong>Kan jag använda appen offline?</strong><br>Nej, appen behöver internetuppkoppling eftersom resultat och stationer synkas live via molnet mellan alla enheter.</li>
       <li><strong>Hur delar jag appen med en vän utan att blanda ihop våra tävlingar?</strong><br>Skicka länken/QR-koden som vanligt. Din vän skriver in sin egen matchkod första gången — då hålls ni helt separerade trots att ni använder samma app och databas.</li>
@@ -645,12 +667,24 @@
     );
     matchCode = sanitizeMatchCode(enteredCode) || "standard";
     try { window.localStorage.setItem("poangrakning_match_code", matchCode); } catch (e) { /* ignore */ }
+    registerMatchCodeIfWanted(matchCode);
   } else {
     matchCode = sanitizeMatchCode(matchCode);
   }
 
   function dbPath(p) {
     return "codes/" + matchCode + "/" + p;
+  }
+
+  function registerMatchCodeIfWanted(code) {
+    if (!db) return;
+    var makePublic = confirm(
+      "Vill du att matchkoden \"" + code + "\" ska synas i den delade listan över matchkoder, så andra lätt kan hitta och välja den?\n\n" +
+      "Tryck Avbryt om du vill hålla den privat/dold."
+    );
+    if (makePublic) {
+      db.ref("matchCodeRegistry/" + code).set({ createdAt: Date.now() });
+    }
   }
 
   var currentMatchCodeEl = document.getElementById("current-match-code");
@@ -662,8 +696,55 @@
     var cleaned = sanitizeMatchCode(newCode);
     if (!cleaned) { alert("Matchkoden kan inte vara tom."); return; }
     try { window.localStorage.setItem("poangrakning_match_code", cleaned); } catch (e) { /* ignore */ }
+    registerMatchCodeIfWanted(cleaned);
     alert("Matchkod ändrad till \"" + cleaned + "\". Appen laddas om.");
     location.reload();
+  });
+
+  document.getElementById("btn-show-matchcodes").addEventListener("click", function () {
+    if (!db) return;
+    db.ref("matchCodeRegistry").once("value").then(function (snap) {
+      var data = snap.val() || {};
+      var container = document.getElementById("matchcodes-list");
+      container.innerHTML = "";
+      var codes = Object.keys(data);
+
+      if (!codes.length) {
+        container.innerHTML = "<p class='meta-text'>Inga synliga matchkoder registrerade än.</p>";
+      } else {
+        codes.sort();
+        codes.forEach(function (code) {
+          var row = document.createElement("div");
+          row.className = "settings-row";
+
+          var span = document.createElement("span");
+          span.style.flex = "1";
+          span.style.width = "auto";
+          span.textContent = code + (code === matchCode ? " (nuvarande)" : "");
+
+          var useBtn = document.createElement("button");
+          useBtn.type = "button";
+          useBtn.className = "small-btn";
+          useBtn.style.marginLeft = "0";
+          useBtn.style.marginTop = "0";
+          useBtn.textContent = code === matchCode ? "Aktiv" : "Använd";
+          useBtn.disabled = code === matchCode;
+          useBtn.addEventListener("click", function () {
+            try { window.localStorage.setItem("poangrakning_match_code", code); } catch (e) { /* ignore */ }
+            location.reload();
+          });
+
+          row.appendChild(span);
+          row.appendChild(useBtn);
+          container.appendChild(row);
+        });
+      }
+
+      document.getElementById("matchCodesModalBackdrop").classList.add("open");
+    });
+  });
+  document.getElementById("btn-close-matchcodes").addEventListener("click", function () {
+    document.getElementById("matchCodesModalBackdrop").classList.remove("open");
   });
 
   // ---------------------------------------------------------------
@@ -1113,7 +1194,17 @@
     refreshPinLock();
   }
 
-  stageSelect.addEventListener("change", renderStationInfoPanel);
+  function resetEntryFieldsOnStationChange() {
+    document.getElementById("gross_pts").value = "0";
+    document.getElementById("time_sec").value = "";
+    if (typeof penaltyCounter !== "undefined" && penaltyCounter) penaltyCounter.reset();
+    if (typeof bonusCounter !== "undefined" && bonusCounter) bonusCounter.reset();
+  }
+
+  stageSelect.addEventListener("change", function () {
+    renderStationInfoPanel();
+    resetEntryFieldsOnStationChange();
+  });
 
   // ---------------------------------------------------------------
   // Inställningar: stationskort
@@ -1640,6 +1731,34 @@
     });
   });
 
+  document.getElementById("btn-remove-all-stations").addEventListener("click", function () {
+    if (!stationsList.length) { alert("Det finns inga stationer att ta bort."); return; }
+
+    var checks = stationsList.map(function (station) {
+      return db.ref(dbPath("matches/match1/" + station.id)).once("value").then(function (snap) {
+        return { name: station.name, hasData: snap.val() !== null };
+      });
+    });
+
+    Promise.all(checks).then(function (results) {
+      var withResults = results.filter(function (r) { return r.hasData; }).map(function (r) { return r.name; });
+      if (withResults.length) {
+        alert("Följande stationer har registrerade resultat och kan inte tas bort förrän de nollställts under Topplista:\n\n" + withResults.join("\n"));
+        return;
+      }
+      if (!confirm("Ta bort samtliga " + stationsList.length + " stationer permanent? Detta går inte att ångra.")) return;
+
+      db.ref(dbPath("settings/stations")).set([]).then(function () {
+        alert("Alla stationer borttagna.");
+      }).catch(function (err) {
+        alert("Kunde inte ta bort: " + err.message);
+      });
+    }).catch(function (err) {
+      alert("Något gick fel: " + err.message);
+    });
+  });
+
+
   // ---------------------------------------------------------------
   // Stationsmallar
   // ---------------------------------------------------------------
@@ -1923,12 +2042,20 @@
     });
   }
 
+  function getShooterName(entry) {
+    return typeof entry === "string" ? entry : ((entry && entry.name) || "");
+  }
+  function getShooterAddedAt(entry) {
+    return (entry && typeof entry === "object" && entry.addedAt) ? entry.addedAt : 0;
+  }
+
   function renderShooterChips() {
     var container = document.getElementById("shooter-chips");
     container.innerHTML = "";
-    var names = Object.keys(knownShooters).map(function (k) { return knownShooters[k]; });
-    names.sort(function (a, b) { return a.localeCompare(b, "sv"); });
-    names.forEach(function (name) {
+    var keys = Object.keys(knownShooters);
+    keys.sort(function (a, b) { return getShooterAddedAt(knownShooters[a]) - getShooterAddedAt(knownShooters[b]); });
+    keys.forEach(function (key) {
+      var name = getShooterName(knownShooters[key]);
       var chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip";
@@ -1944,7 +2071,7 @@
     var name = document.getElementById("shooter_name").value.trim();
     if (!name) { alert("Skriv in ditt namn i fältet Skytt först."); return; }
     var key = sanitizeKey(name);
-    db.ref(dbPath("shooters/" + key)).set(name).then(function () {
+    db.ref(dbPath("shooters/" + key)).set({ name: name, addedAt: Date.now() }).then(function () {
       setStatus(name + " tillagd i skyttlistan ✔", "status-ok");
     });
   });
@@ -1961,10 +2088,11 @@
       return;
     }
 
-    keys.sort(function (a, b) { return knownShooters[a].localeCompare(knownShooters[b], "sv"); });
+    keys.sort(function (a, b) { return getShooterAddedAt(knownShooters[a]) - getShooterAddedAt(knownShooters[b]); });
 
     keys.forEach(function (key) {
-      var name = knownShooters[key];
+      var name = getShooterName(knownShooters[key]);
+      var addedAt = getShooterAddedAt(knownShooters[key]) || Date.now();
       var row = document.createElement("div");
       row.className = "settings-row";
 
@@ -1990,10 +2118,10 @@
         if (!newName) { alert("Namnet kan inte vara tomt."); return; }
         var newKey = sanitizeKey(newName);
         if (newKey === key) {
-          db.ref(dbPath("shooters/" + key)).set(newName);
+          db.ref(dbPath("shooters/" + key)).set({ name: newName, addedAt: addedAt });
         } else {
           db.ref(dbPath("shooters/" + key)).remove();
-          db.ref(dbPath("shooters/" + newKey)).set(newName);
+          db.ref(dbPath("shooters/" + newKey)).set({ name: newName, addedAt: addedAt });
         }
       });
 
@@ -2171,15 +2299,65 @@
   var modalStationCap = 0;
   var lastHitBreakdown = {};
 
+  function showZonesForSystem(sysKey) {
+    var sys = scoreSystems[sysKey];
+    scoreSystemTitle.textContent = sys.label;
+    zoneGrid.innerHTML = "";
+    updateTallyDisplay();
+
+    var station = getSelectedStation();
+    var steelVal = getStationSteelValue(station);
+
+    sys.zones.forEach(function (zoneOrig) {
+      var zone = zoneOrig;
+      if (sysKey === "steel" && !zoneOrig.isMiss) {
+        zone = { k: zoneOrig.k, v: steelVal, voice: zoneOrig.voice };
+      }
+
+      var zbtn = document.createElement("button");
+      zbtn.type = "button";
+      zbtn.className = zone.isMiss ? "zone-btn zone-btn-miss" : "zone-btn";
+      zbtn.textContent = zone.k + " (" + zone.v + ")";
+      zbtn.addEventListener("click", function () {
+        if (modalStationCap && currentHits.length >= modalStationCap) {
+          alert("Max antal skott (" + modalStationCap + ") för denna station är nått.");
+          return;
+        }
+        currentTally += zone.v;
+        currentHits.push({ key: zone.k, value: zone.v });
+        speak(zone.voice);
+        updateTallyDisplay();
+      });
+      zoneGrid.appendChild(zbtn);
+    });
+
+    stepSystem.style.display = "none";
+    stepZones.style.display = "block";
+  }
+
+  function getSingleSystemForStation(station) {
+    if (!station || !station.targetTypes || !station.targetTypes.length) return null;
+    var systems = {};
+    station.targetTypes.forEach(function (t) { systems[t.system] = true; });
+    var keys = Object.keys(systems);
+    return keys.length === 1 ? keys[0] : null;
+  }
+
   function openScoreModal() {
     currentTally = parseInt(document.getElementById("gross_pts").value, 10) || 0;
     currentHits = [];
     var station = getSelectedStation();
     modalStationCap = station ? stationTotalShots(station) : 0;
-    stepSystem.style.display = "block";
-    stepZones.style.display = "none";
     updateTallyDisplay();
     scoreModalBackdrop.classList.add("open");
+
+    var onlySystem = getSingleSystemForStation(station);
+    if (onlySystem) {
+      showZonesForSystem(onlySystem);
+    } else {
+      stepSystem.style.display = "block";
+      stepZones.style.display = "none";
+    }
   }
 
   function closeScoreModalAndApply() {
@@ -2210,40 +2388,7 @@
 
   document.querySelectorAll(".system-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      var sysKey = btn.dataset.system;
-      var sys = scoreSystems[sysKey];
-      scoreSystemTitle.textContent = sys.label;
-      zoneGrid.innerHTML = "";
-      updateTallyDisplay();
-
-      var station = getSelectedStation();
-      var steelVal = getStationSteelValue(station);
-
-      sys.zones.forEach(function (zoneOrig) {
-        var zone = zoneOrig;
-        if (sysKey === "steel" && !zoneOrig.isMiss) {
-          zone = { k: zoneOrig.k, v: steelVal, voice: zoneOrig.voice };
-        }
-
-        var zbtn = document.createElement("button");
-        zbtn.type = "button";
-        zbtn.className = zone.isMiss ? "zone-btn zone-btn-miss" : "zone-btn";
-        zbtn.textContent = zone.k + " (" + zone.v + ")";
-        zbtn.addEventListener("click", function () {
-          if (modalStationCap && currentHits.length >= modalStationCap) {
-            alert("Max antal skott (" + modalStationCap + ") för denna station är nått.");
-            return;
-          }
-          currentTally += zone.v;
-          currentHits.push({ key: zone.k, value: zone.v });
-          speak(zone.voice);
-          updateTallyDisplay();
-        });
-        zoneGrid.appendChild(zbtn);
-      });
-
-      stepSystem.style.display = "none";
-      stepZones.style.display = "block";
+      showZonesForSystem(btn.dataset.system);
     });
   });
 
@@ -2402,6 +2547,7 @@
     var stageName = stageSelect.selectedOptions[0] ? stageSelect.selectedOptions[0].textContent : stageId;
     var stationForSave = stationsList.filter(function (s) { return s.id === stageId; })[0];
     var precisionOnly = isPrecisionOnlyStation(stationForSave);
+    var noTimeToggle = document.getElementById("no_time_toggle").checked;
     var name = document.getElementById("shooter_name").value.trim();
     var gross = parseInt(document.getElementById("gross_pts").value, 10) || 0;
     var penalty = parseInt(document.getElementById("penalty_pts").value, 10) || 0;
@@ -2412,7 +2558,7 @@
       alert("Vänligen fyll i skyttens namn!");
       return;
     }
-    if (!precisionOnly && time <= 0) {
+    if (!precisionOnly && !noTimeToggle && time <= 0) {
       alert("Vänligen ange en giltig tid!");
       return;
     }
@@ -2447,7 +2593,11 @@
         hf: parseFloat(hitFactor.toFixed(4)),
         hitBreakdown: lastHitBreakdown
       }).then(function () {
-        db.ref(dbPath("shooters/" + shooterKey)).set(name);
+        db.ref(dbPath("shooters/" + shooterKey)).once("value").then(function (shooterSnap) {
+          var existing = shooterSnap.val();
+          var addedAt = getShooterAddedAt(existing) || Date.now();
+          db.ref(dbPath("shooters/" + shooterKey)).set({ name: name, addedAt: addedAt });
+        });
 
         saveBtn.disabled = false;
         setStatus("Sparat för " + name + " ✔", "status-ok");
@@ -2456,6 +2606,7 @@
         document.getElementById("shooter_name").value = "";
         document.getElementById("gross_pts").value = "0";
         document.getElementById("time_sec").value = "";
+        document.getElementById("no_time_toggle").checked = false;
         penaltyCounter.reset();
         bonusCounter.reset();
         lastHitBreakdown = {};
