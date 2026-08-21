@@ -439,6 +439,7 @@
       <li>Lägg till ev. straff/bonus med plus/minus-knapparna, och ange tiden med sifferknapparna. Skjuts stationen utan skjuttimer kan du kryssa i "Ingen tid" för att slippa tidskravet. Tryck sist på "Spara &amp; Beräkna" — en tydlig bekräftelseruta visas när det är klart.</li>
       <li>Om skytten redan har ett resultat på stationen får du en fråga om du vill skriva över det — säg bara ja om det verkligen ska ändras.</li>
       <li>Skrev du fel namn på en skytt? Tryck "✏️ Hantera skyttar" bredvid Skytt-fältet för att ändra eller ta bort namn ur listan (påverkar inte redan sparade resultat). Skyttarna listas i den ordning de lades till.</li>
+      <li>En skytt-chip blir grön så fort den skytten har fått resultat på den valda stationen. När alla i listan är gröna hoppar appen automatiskt till nästa station — och en station som redan är helt klar visas med ✅ i stationslistan.</li>
     </ul>
 
     <h4>Som skjutledare — Efter tävlingen</h4>
@@ -452,12 +453,10 @@
     <ul>
       <li><strong>Vad är matchkoden och varför behöver jag den?</strong><br>Matchkoden är din personliga "rum" i den delade databasen. Alla som skriver in samma kod ser samma tävling; olika koder håller olika personers data helt separerade i samma app.</li>
       <li><strong>Syns min matchkod för alla?</strong><br>Bara om du väljer det. När du skapar eller byter kod frågar appen om den ska synas i den delade listan ("📋 Visa koder") — svarar du nej hålls koden helt dold och måste skrivas in manuellt av den som ska använda den.</li>
-      <li><strong>Vad är ägarkoden och var hittar jag den?</strong><br>Ägarkoden är ett extra lösenord som bara krävs för att byta PIN-kod, så att inte vem som helst kan låsa ut dig. Den står i appens kod (leta efter texten OWNER_CODE) — byt den gärna till något eget bara du känner till.</li>
       <li><strong>Kan jag använda appen offline?</strong><br>Nej, appen behöver internetuppkoppling eftersom resultat och stationer synkas live via molnet mellan alla enheter.</li>
       <li><strong>Hur delar jag appen med en vän utan att blanda ihop våra tävlingar?</strong><br>Skicka länken/QR-koden som vanligt. Din vän skriver in sin egen matchkod första gången — då hålls ni helt separerade trots att ni använder samma app och databas.</li>
       <li><strong>Vad händer om jag glömmer PIN-koden?</strong><br>Den som har tillgång till appens kod på GitHub kan alltid läsa av eller ändra PIN-koden direkt i inställningarna där (leta efter texten currentPin), eller sätta en ny via ägarkoden i appen.</li>
       <li><strong>Hur fungerar Stationspoäng?</strong><br>Vinnaren av en station (högst Hit Factor) får hela stationens maxpoäng. Övriga får sin andel av vinnarens Hit Factor multiplicerat med maxpoängen. På rena Precision-stationer räknas istället bara faktiska poäng, utan tidspåverkan.</li>
-      <li><strong>Kan jag ändra en station mitt under en pågående tävling utan att förlora resultat?</strong><br>Ja. Du kan redigera namn, beskrivning, bild med mera när som helst utan att röra sparade resultat. Att ta bort en station eller minska antalet skott är dock blockerat så länge det finns registrerade resultat på den — nollställ stationen under Topplista först.</li>
       <li><strong>Hur exporterar jag resultatet när tävlingen är klar?</strong><br>Gå till Topplista och tryck "⬇️ Exportera CSV" (öppnas direkt i Excel) eller "🖨️ Skriv ut / PDF" (tar med alla stationer plus Total, med Total på egen sida).</li>
     </ul>
 
@@ -1006,6 +1005,7 @@
   // Stationer (delade inställningar i molnet, med stabila id:n)
   // ---------------------------------------------------------------
   var stationsList = [];
+  var stationCompletionStatus = {};
 
   function makeStationObj(name, id) {
     return {
@@ -1097,9 +1097,30 @@
   if (db) {
     db.ref(dbPath("settings/stations")).on("value", function (snap) {
       stationsList = normalizeStationsArray(snap.val());
+      recomputeStationCompletion();
       renderStationSelects();
       renderStationSettingsCards();
       renderStationInfoPanel();
+    });
+  }
+
+  var latestMatchesData = {};
+
+  function recomputeStationCompletion() {
+    var shooterKeys = Object.keys(knownShooters || {});
+    stationCompletionStatus = {};
+    stationsList.forEach(function (station) {
+      var stationData = latestMatchesData[station.id] || {};
+      var complete = shooterKeys.length > 0 && shooterKeys.every(function (k) { return !!stationData[k]; });
+      stationCompletionStatus[station.id] = complete;
+    });
+  }
+
+  if (db) {
+    db.ref(dbPath("matches/match1")).on("value", function (snap) {
+      latestMatchesData = snap.val() || {};
+      recomputeStationCompletion();
+      renderStationSelects();
     });
   }
 
@@ -1118,14 +1139,17 @@
     lbSelect.innerHTML = "";
 
     stationsList.forEach(function (station, idx) {
+      var done = stationCompletionStatus[station.id] ? " ✅" : "";
+      var label = (idx + 1) + ". " + station.name + done;
+
       var opt1 = document.createElement("option");
       opt1.value = station.id;
-      opt1.textContent = (idx + 1) + ". " + station.name;
+      opt1.textContent = label;
       stageSelect.appendChild(opt1);
 
       var opt2 = document.createElement("option");
       opt2.value = station.id;
-      opt2.textContent = (idx + 1) + ". " + station.name;
+      opt2.textContent = label;
       lbSelect.appendChild(opt2);
     });
 
@@ -2051,6 +2075,8 @@
     db.ref(dbPath("shooters")).on("value", function (snap) {
       knownShooters = snap.val() || {};
       renderShooterChips();
+      recomputeStationCompletion();
+      renderStationSelects();
       if (typeof renderManageShootersList === "function" && manageShootersModalBackdrop && manageShootersModalBackdrop.classList.contains("open")) {
         renderManageShootersList();
       }
@@ -2336,7 +2362,7 @@
   var currentTally = 0;
   var currentHits = [];
   var modalStationCap = 0;
-  var lastHitBreakdown = {};
+  var lastHitBreakdown = [];
 
   function showZonesForSystem(sysKey) {
     var sys = scoreSystems[sysKey];
@@ -2402,10 +2428,7 @@
   function closeScoreModalAndApply() {
     document.getElementById("gross_pts").value = currentTally;
     if (currentHits.length) {
-      lastHitBreakdown = {};
-      currentHits.forEach(function (h) {
-        lastHitBreakdown[h.key] = (lastHitBreakdown[h.key] || 0) + 1;
-      });
+      lastHitBreakdown = currentHits.map(function (h) { return h.key; });
     }
     scoreModalBackdrop.classList.remove("open");
   }
@@ -2572,6 +2595,25 @@
   // ---------------------------------------------------------------
   // Spara resultat
   // ---------------------------------------------------------------
+  function checkStationCompletionAndAdvance(stationId) {
+    db.ref(dbPath("matches/match1/" + stationId)).once("value").then(function (snap) {
+      var stationData = snap.val() || {};
+      var shooterKeys = Object.keys(knownShooters);
+      var complete = shooterKeys.length > 0 && shooterKeys.every(function (k) { return !!stationData[k]; });
+      if (!complete) return;
+
+      var idx = -1;
+      for (var i = 0; i < stationsList.length; i++) {
+        if (stationsList[i].id === stationId) { idx = i; break; }
+      }
+      if (idx !== -1 && idx + 1 < stationsList.length) {
+        stageSelect.value = stationsList[idx + 1].id;
+        stageSelect.dispatchEvent(new Event("change"));
+        setStatus("Alla skyttar klara på föregående station — hoppade till nästa!", "status-ok");
+      }
+    });
+  }
+
   function saveScore() {
     if (!db) { alert("Ingen databasanslutning."); return; }
     if (!stationsList.length) { alert("Inga stationer finns ännu. Lägg till en station under Inställningar innan du registrerar resultat."); return; }
@@ -2648,7 +2690,9 @@
         // no_time_toggle nollställs medvetet INTE - den ska vara "klibbig" tills man klickar ur den
         penaltyCounter.reset();
         bonusCounter.reset();
-        lastHitBreakdown = {};
+        lastHitBreakdown = [];
+
+        checkStationCompletionAndAdvance(stageId);
       }).catch(function (err) {
         saveBtn.disabled = false;
         setStatus("Fel vid lagring: " + err.message, "status-bad");
@@ -2704,6 +2748,11 @@
 
   function formatHitBreakdown(breakdown) {
     if (!breakdown) return "";
+    if (Array.isArray(breakdown)) {
+      if (!breakdown.length) return "";
+      return "(" + breakdown.join(", ") + ")";
+    }
+    // Äldre format (objekt med key:count) - bakåtkompatibilitet för gamla resultat
     var keys = Object.keys(breakdown);
     if (!keys.length) return "";
     return keys.map(function (k) { return k + ":" + breakdown[k]; }).join(" ");
